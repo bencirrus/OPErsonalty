@@ -15,10 +15,13 @@ Open http://127.0.0.1:8000. Click "Run property team."
 ## What this proves
 
 - One short intake drives a ranked property pitch.
-- Eight visible specialist roles produce one decision surface.
-- The Reviewer removes unsupported rent from an unwarranted in-law, dropping Richmond coverage from 105% claimed to 68% defensible and changing the winner.
-- The user's weekly living-cash floor is explicit. Below-floor cases are high risk and never recommended.
-- Load-bearing claims show evidence confidence and warning tags.
+- Ten visible specialist roles (Router through Downside Reviewer) produce one decision surface.
+- The Reviewer removes unsupported rent from an unwarranted in-law, dropping Richmond coverage to 68% defensible and changing the winner.
+- Spec ranking model: coverage, residual cash, cash-on-cash, owner-unit fit, evidence confidence, with subtractive penalties.
+- Residual weekly cash is shown as a plain weekly picture; below-floor cases get a red flag, are excluded from recommended, and the language is "does not meet the floor you set" - never "you could make this work".
+- Load-bearing claims carry source tags ([listing], [city-record], [market-comp], [assumption]); unverifiable claims render as VERIFY.
+- Downside stress panel per property (vacancy, rent cut, rate shock).
+- Approve / Pass / Send-back controls; approval writes local status only.
 
 ## Evidence boundary
 
