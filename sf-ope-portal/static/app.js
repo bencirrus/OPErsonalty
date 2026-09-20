@@ -33,7 +33,7 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <div class="rank">#${p.rank}</div>
 <div>
 <h3>${p.name}</h3>
-<div class="sub">${money(p.price)} · ${p.units} units · ${p.address?p.address.display+' · ':''}${p.owner}</div>
+<div class="sub">${money(p.price)} · ${p.units} units · ${p.address?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address.display+', San Francisco, CA')}" target="_blank" rel="noopener">${p.address.display}</a> · `:''}${p.owner}</div>
 <div class="risks">${p.flags.map(x=>`<span class="${sev(x)}" title="${x.text}">${x.flag}</span>`).join('')}</div>
 <table class="nums">
 <tr><td>Housing cost</td><td>${money(p.housing_cost)}/mo <span class="tag assume">${p.sources.housing_cost}</span></td></tr>
@@ -44,6 +44,7 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <tr><td>Renovation (output)</td><td>${p.reno_scope} - ${p.reno} <span class="tag assume">${p.sources.reno}</span></td></tr>
 ${p.amenities?`<tr><td>Amenities</td><td>${p.amenities.summary} <span class="tag ${p.amenities.live?'src':'assume'}">${p.amenities.source_tag}</span></td></tr>`:''}
 ${p.str?`<tr><td>STR vs LTR</td><td>${p.str.summary} <span class="tag ${p.str.live?'src':'assume'}">${p.str.source_tag}</span></td></tr>`:''}
+${p.financing_fit?`<tr><td>Financing fit</td><td>${p.financing_fit.summary} <span class="tag assume">${p.financing_fit.source_tag}</span></td></tr>`:''}
 ${p.rent_benchmark?`<tr><td>Rent benchmark</td><td>${p.rent_benchmark.summary} <span class="tag ${p.rent_benchmark.live?'src':'assume'}">${p.rent_benchmark.source_tag}</span></td></tr>`:''}
 ${p.geo_how?`<tr><td>Your area</td><td>${p.geo_match?'Matches: '+p.geo_how:'No match'} </td></tr>`:''}
 </table>
@@ -90,7 +91,7 @@ fetch('/api/config').then(r=>r.json()).then(cfg=>{
  document.getElementById('rate-note').textContent=cfg.note;
 }).catch(()=>{});
 f.onsubmit=async e=>{e.preventDefault();
- let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:0,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
+ let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
  if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
