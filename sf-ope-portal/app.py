@@ -31,19 +31,19 @@ SEEDED=[
  {'id':'richmond-3','name':'Richmond 3-unit','price':1495000,'units':3,'rent_claim':9900,'verified_rent':6400,'housing_cost':9410,'owner':'Garden studio · kitchenette · shared laundry','owner_fit':0.5,'reno':'Major permit work','reno_scope':'major','permit':'Unit 3 has no permit history','evidence':72,'risk':['UNWARRANTED UNIT','UNSUPPORTED RENT'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'city-record DBI-2026-0417','permit':'city-record DBI-2026-0417','reno':'assumption','housing_cost':'assumption'},'verify':[],
   'address':{'street_number':'648','street_name':'06th','street_suffix':'Av','display':'648 6th Ave, Inner Richmond'},'block_address':'600 Block of 06TH AVE',
   'geo':{'lat':37.776349923,'lon':-122.463617563,'neighborhood':'Inner Richmond','zip':'94118','landmarks':{'Golden Gate Park':0.4,'De Young Museum':0.6,'Clement Street':0.2,'Presidio':1.2}},
-  'amenities_seeded':{'groceries':9,'transit_stops':12,'parking':4,'bike_share':2},'str_seeded':{'median_nightly':265,'n_listings':120,'n_licensed':70}},
+  'amenities_seeded':{'groceries':9,'transit_stops':12,'parking':4,'bike_share':2},'str_seeded':{'median_nightly':265,'n_listings':120,'n_licensed':70},'zori_seeded':4300},
  {'id':'excelsior-2','name':'Excelsior legal duplex','price':1195000,'units':2,'rent_claim':7600,'verified_rent':7600,'housing_cost':7089,'owner':'Legal studio · fridge · laundry confirmed','owner_fit':1.0,'reno':'Cosmetic · $18K range','reno_scope':'cosmetic','permit':'Two legal units in seeded city record','evidence':91,'risk':['TIGHT WEEKLY CASH'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 246 Lisbon St $3,800','permit':'city-record DBI-2026-0288','reno':'assumption','housing_cost':'assumption'},'verify':[],
   'address':{'street_number':'126','street_name':'Lisbon','street_suffix':'St','display':'126 Lisbon St, Excelsior'},'block_address':'100 Block of LISBON ST',
   'geo':{'lat':37.726327487,'lon':-122.430671694,'neighborhood':'Excelsior','zip':'94112','landmarks':{'McLaren Park':0.7,'Excelsior Playground':0.3,'Balboa Park BART':0.9}},
-  'amenities_seeded':{'groceries':6,'transit_stops':9,'parking':3,'bike_share':1},'str_seeded':{'median_nightly':240,'n_listings':60,'n_licensed':45}},
+  'amenities_seeded':{'groceries':6,'transit_stops':9,'parking':3,'bike_share':1},'str_seeded':{'median_nightly':240,'n_listings':60,'n_licensed':45},'zori_seeded':3600},
  {'id':'mission-3','name':'Mission 3-unit','price':1675000,'units':3,'rent_claim':9700,'verified_rent':8950,'housing_cost':10840,'owner':'1BR · kitchen · laundry nearby','owner_fit':0.5,'reno':'Moderate · $55K-$90K','reno_scope':'moderate','permit':'Rear addition requires verification','evidence':78,'risk':['PERMIT VERIFY','PRICE CEILING'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 3025 24th St $3,100','permit':'assumption','reno':'assumption','housing_cost':'assumption'},'verify':['Rear addition has no permit record - is the third unit legal?'],
   'address':{'street_number':'737','street_name':'Guerrero','street_suffix':'St','display':'737 Guerrero St, Mission'},'block_address':'700 Block of GUERRERO ST',
   'geo':{'lat':37.759356635,'lon':-122.423288149,'neighborhood':'Mission','zip':'94110','landmarks':{'Dolores Park':0.5,'Valencia Corridor':0.3,'16th St Mission BART':0.7}},
-  'amenities_seeded':{'groceries':14,'transit_stops':18,'parking':6,'bike_share':5},'str_seeded':{'median_nightly':280,'n_listings':210,'n_licensed':120}},
+  'amenities_seeded':{'groceries':14,'transit_stops':18,'parking':6,'bike_share':5},'str_seeded':{'median_nightly':280,'n_listings':210,'n_licensed':120},'zori_seeded':4400},
  {'id':'sunset-2','name':'Outer Sunset duplex','price':1280000,'units':2,'rent_claim':7200,'verified_rent':7000,'housing_cost':8460,'owner':'Studio conversion assumed · laundry','owner_fit':0.5,'reno':'Moderate · $35K-$60K','reno_scope':'moderate','permit':'Conversion feasibility unverified','evidence':75,'risk':['LAYOUT ASSUMPTION'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 2211 Irving St $3,500','permit':'assumption','reno':'assumption','housing_cost':'assumption'},'verify':['Studio conversion legality unverified - confirm the owner unit is legal'],
   'address':{'street_number':'1414','street_name':'38th','street_suffix':'Av','display':'1414 38th Ave, Outer Sunset'},'block_address':'1400 Block of 38TH AVE',
   'geo':{'lat':37.760466195,'lon':-122.497043716,'neighborhood':'Outer Sunset','zip':'94122','landmarks':{'Golden Gate Park':0.6,'Ocean Beach':1.1,'Sunset Reservoir':0.3,'N Judah line':0.4}},
-  'amenities_seeded':{'groceries':7,'transit_stops':10,'parking':2,'bike_share':1},'str_seeded':{'median_nightly':270,'n_listings':160,'n_licensed':120}}
+  'amenities_seeded':{'groceries':7,'transit_stops':10,'parking':2,'bike_share':1},'str_seeded':{'median_nightly':270,'n_listings':160,'n_licensed':120},'zori_seeded':3900}
 ]
 
 DECISIONS={}
@@ -199,6 +199,14 @@ def str_block(seed,live):
      'rules':STR_RULES,'rules_source':STR_RULES_SOURCE,
      'seasonality':{'note':'Seasonality and conference demand are not freely available data - directional assumption only, not priced in.','source':'assumption'}}
 
+def zori_block(seed,live):
+    """Rent benchmark panel data: Zillow ZORI by zip (live), seeded offline."""
+    if live:
+        return {'live':True,'source_tag':'Zillow Research ZORI (live)','zori':live['zori'],'month':live['month'],
+                'summary':'Zillow ZORI zip rent benchmark: $%s/mo (%s, all homes, seasonally adjusted)' % (format(live['zori'],','),live['month'])}
+    return {'live':False,'source_tag':'assumption (seeded)','zori':seed['zori_seeded'],'month':'seeded',
+            'summary':'Zillow ZORI zip rent benchmark: $%s/mo (seeded - live Zillow Research feed offline)' % format(seed['zori_seeded'],',')}
+
 def analyze(intake:Intake,rate_pct:float):
     floor=intake.min_living_allowance_usd_per_week
     rows=[]
@@ -218,6 +226,7 @@ def analyze(intake:Intake,rate_pct:float):
                 b['flags']=b['flags']+[{'severity':'amber','flag':'Outside your area','text':'Does not match the area you asked for ("%s"). Kept for comparison, excluded from recommended.' % geo_area}]
         p['amenities']=amenities_block(seed,livedata.amenities_for(seed))
         p['str']=str_block(seed,livedata.str_comps(seed['geo'].get('neighborhood')))
+        p['rent_benchmark']=zori_block(seed,livedata.zori_benchmark(seed['geo'].get('zip')))
         coc=(p['verified_rent']-p['housing_cost'])*12/max(intake.cash_available_usd,1)
         rows.append({**p,**b,'live':live_block,'_coc':coc,
             'score_components':{
@@ -257,7 +266,7 @@ def agent_roster(live_on,rate_pct,rate_source,geo_area=None,amenities_live=False
     return [
       {'name':'Router / Orchestrator','did':'typed task packets emitted per property','question':'Who needs to look at this building, and in what order?','evidence':'run log: all twelve roles executed in sequence per property'},
       {'name':'Acquisition Scout','did':'4 seeded listings screened against price, units, filters' + (', area filter "%s" applied' % geo_area if geo_area else ''),'question':'Which buildings fit the budget and basic filters at all?','evidence':'listing screens, price ceiling [assumption], geo area match (neighborhood, zip, landmark) [listing]'},
-      {'name':'Rent-Roll Analyst','did':'claimed rents separated from defensible rents','question':'Which rents are real, and which are wishful?','evidence':'claimed vs defensible rent per unit, market comps [market-comp]'},
+      {'name':'Rent-Roll Analyst','did':'claimed rents separated from defensible rents','question':'Which rents are real, and which are wishful?','evidence':'claimed vs defensible rent per unit, market comps [market-comp]; Zillow Research ZORI zip rent benchmark (live CSV, used with attribution) [source]; seeded benchmark offline'},
       {'name':'Layout & Owner-Unit Analyst','did':'owner-unit necessities checked','question':'Can the owner actually live here?','evidence':'owner-unit checklist: legal space, fridge, laundry'},
       {'name':'Neighborhood & Amenities Analyst','did':('live OpenStreetMap + Bay Wheels check around each seeded address' if amenities_live else 'seeded amenities screen (live map data unreachable - offline fallback)'),'question':'What is daily life like around this address?','evidence':'[city-record] OpenStreetMap (Overpass) groceries, transit stops, parking + Bay Wheels GBFS bike docks within ~0.5 mi; tech shuttles [assumption] - not public data'},
       {'name':'Permit & Zoning Analyst','did':city_line,'question':'Is every unit in the listing actually legal?','evidence':'[city-record] SF DBI Building Permits (data.sfgov.org i98e-djp9) + Rent Board Housing Inventory (gdc7-dmcn), keyless live API; seeded record offline'},

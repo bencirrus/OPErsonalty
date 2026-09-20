@@ -200,3 +200,23 @@ def test_str_live_merge(monkeypatch):
     assert s['source_tag'].startswith('Inside Airbnb')
     assert s['unhosted_ceiling_monthly']==round(300*90/12)
     assert '50 entire-home listings, 40 licensed' in s['summary']
+
+
+def test_zori_offline_seeded():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    for p in d['properties']:
+        b=p['rent_benchmark']
+        assert b['live'] is False
+        assert b['source_tag']=='assumption (seeded)'
+        assert 'Zillow ZORI' in b['summary']
+
+
+def test_zori_live_merge(monkeypatch):
+    monkeypatch.setattr(livedata,'zori_benchmark',lambda zipcode: {'zori':4500,'month':'2026-08-31'})
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    b=d['properties'][0]['rent_benchmark']
+    assert b['live'] is True
+    assert b['zori']==4500 and b['month']=='2026-08-31'
+    assert '$4,500/mo' in b['summary']

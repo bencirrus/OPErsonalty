@@ -319,3 +319,34 @@ def str_comps(neighborhood):
         return {'median_nightly': round(med), 'n_listings': len(prices),
                 'n_licensed': licensed, 'snapshot': INSIDE_AIRBNB_SNAPSHOT}
     return _cached('str:' + (neighborhood or '').lower(), fetch)
+
+ZORI_URL = 'https://files.zillowstatic.com/research/public_csvs/zori/Zip_zori_uc_sfrcondomfr_sm_sa_month.csv'
+ZORI_ATTRIBUTION = 'Zillow Research ZORI (smoothed, seasonally adjusted, all homes)'
+
+
+def _zori_sf_table():
+    """Zillow Observed Rent Index by SF zip: {zip: {'zori': int, 'month': 'YYYY-MM-DD'}}. None on failure."""
+    def fetch():
+        import csv, io
+        raw = _http_get(ZORI_URL)
+        rows = csv.DictReader(io.StringIO(raw.decode('utf-8', 'replace')))
+        out = {}
+        for r in rows:
+            if r.get('City') != 'San Francisco' or r.get('State') != 'CA':
+                continue
+            vals = [(k, v) for k, v in r.items() if k[:2] == '20' and v]
+            if vals:
+                month, v = vals[-1]
+                out[r['RegionName']] = {'zori': round(float(v)), 'month': month}
+        if not out:
+            raise ValueError('no SF rows')
+        return out
+    return _cached('zori:sf', fetch)
+
+
+def zori_benchmark(zipcode):
+    """Latest ZORI rent benchmark for one SF zip, or None."""
+    table = _zori_sf_table()
+    if not table:
+        return None
+    return table.get(str(zipcode))

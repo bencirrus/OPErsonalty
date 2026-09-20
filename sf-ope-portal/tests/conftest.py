@@ -12,3 +12,4 @@ def _offline_by_default(monkeypatch):
     monkeypatch.setattr(livedata,'fred_rate',lambda: None)
     monkeypatch.setattr(livedata,'amenities_for',lambda prop: None)
     monkeypatch.setattr(livedata,'str_comps',lambda neighborhood: None)
+    monkeypatch.setattr(livedata,'zori_benchmark',lambda zipcode: None)
