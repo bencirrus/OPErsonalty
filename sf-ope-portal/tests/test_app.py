@@ -1,10 +1,33 @@
 from fastapi.testclient import TestClient
-from app import app
+from app import app, SEEDED
+import livedata
 import json
 c=TestClient(app)
 
 def run(payload=None):
     return c.post('/api/analyze',json=payload or {}).json()
+
+def _dbi(units,latest='209900001',status='filed',filed='2026-09-18',count=4,adds=()):
+    return {'permit_count':count,'latest_permit':latest,'latest_status':status,'latest_filed':filed,
+            'latest_units_existing':float(units),'max_units_on_record':float(units),
+            'max_units_proposed':max([units]+[a['to_units'] for a in adds]) if adds else float(units),
+            'unit_addition_permits':list(adds),'dataset_url':'https://data.sfgov.org/x'}
+
+def _add(number,status,to_units,from_units=2.0):
+    return {'permit_number':number,'status':status,'filed':'2026-09-18',
+            'from_units':from_units,'to_units':float(to_units),'description':'legalize unit'}
+
+def _rb(n=0):
+    return {'submissions':n,'block_address':'600 Block of 06TH AVE' if n else None,
+            'latest_unit_count':1.0 if n else None,'latest_signed':'2026-08-25' if n else None,
+            'dataset_url':'https://data.sfgov.org/y'}
+
+def _live(per_id):
+    m={'richmond-3':{'dbi':_dbi(2),'rent_board':_rb(1)},
+       'excelsior-2':{'dbi':_dbi(2,latest='209900002',count=5),'rent_board':_rb(0)},
+       'mission-3':{'dbi':_dbi(2,latest='209900003',count=11,adds=[_add('209900003','issued',3)]),'rent_board':_rb(0)},
+       'sunset-2':{'dbi':_dbi(2,latest='209900004',count=7),'rent_board':_rb(0)}}
+    return m.get(per_id)
 
 def test_unwarranted_unit_caught():
     d=run(); ps=d['properties']
@@ -46,9 +69,15 @@ def test_rerank_deterministic():
     b=[(p['id'],p['rank'],p['score'],p['verdict']) for p in run()['properties']]
     assert a==b
 
+EXPECTED_TITLES=['Router / Orchestrator','Acquisition Scout','Rent-Roll Analyst','Layout & Owner-Unit Analyst','Permit & Zoning Analyst','Construction & Repair Estimator','Renovation Feasibility Planner','Financing Analyst','OpEx & Tax Analyst','Downside Reviewer']
+
 def test_ten_roles_and_stress_panel():
     d=run()
     assert len(d['agents'])==10
+    assert [a['name'] for a in d['agents']]==EXPECTED_TITLES
+    for a in d['agents']:
+        assert a['did'] and a['question'] and a['evidence'], a['name']
+    assert len(d['team_log'])>=4
     for p in d['properties']:
         assert len(p['stress'])==3 and all('passes' in s for s in p['stress'])
 
@@ -58,3 +87,53 @@ def test_decide_and_sendback():
     assert r['status']=='approve' and 'local status only' in r['effect']
     s=c.post('/api/sendback',json={'run_id':rid,'property_id':'richmond-3','note':'check the in-law again'}).json()
     assert s['revision']['note']=='check the in-law again' and s['property']['id']=='richmond-3'
+
+def test_offline_fallback_seeded_rate_and_records():
+    d=run()
+    assert d['data_mode']=='seeded (offline)'
+    assert d['financing']['rate_pct']==6.75 and d['financing']['live'] is False
+    for p in d['properties']:
+        assert p['live'] is None
+
+def test_live_city_records_merge(monkeypatch):
+    monkeypatch.setattr(livedata,'city_record',lambda prop: _live(prop['id']))
+    monkeypatch.setattr(livedata,'fred_rate',lambda: (6.95,'2026-09-17'))
+    d=run()
+    assert d['data_mode']=='live city records'
+    assert d['financing']['rate_pct']==6.95 and d['financing']['live'] is True
+    assert 'FRED MORTGAGE30US' in d['financing']['source'] and '2026-09-17' in d['financing']['source']
+    rich=next(p for p in d['properties'] if p['id']=='richmond-3')
+    assert rich['sources']['permit'].startswith('city-record DBI #209900001')
+    assert 'UNWARRANTED UNIT' in rich['risk']
+    assert rich['live']['unit_verdict']=='Live city record shows 2 legal unit(s); the listing claims 3.'
+    assert rich['live']['rent_board_note'].startswith('Rent Board Housing Inventory: 1 submission(s)')
+    exc=next(p for p in d['properties'] if p['id']=='excelsior-2')
+    assert 'UNWARRANTED UNIT' not in exc['risk']
+    assert 'supports 2 units' in exc['live']['unit_verdict']
+    assert any('6.95' in s['test'] for s in exc['stress'])
+
+def test_live_wins_retracts_seeded_unwarranted(monkeypatch):
+    def cr(prop):
+        if prop['id']=='richmond-3': return {'dbi':_dbi(3),'rent_board':_rb(0)}
+        return None
+    monkeypatch.setattr(livedata,'city_record',cr)
+    d=run()
+    rich=next(p for p in d['properties'] if p['id']=='richmond-3')
+    assert 'UNWARRANTED UNIT' not in rich['risk']
+    assert not any(f['flag']=='Illegal/unwarranted unit' for f in rich['flags'])
+    assert any('retracted' in o for o in rich['live']['overrides'])
+
+def test_live_legalization_in_flight_is_amber_not_red(monkeypatch):
+    monkeypatch.setattr(livedata,'city_record',lambda prop: _live(prop['id']))
+    d=run()
+    mission=next(p for p in d['properties'] if p['id']=='mission-3')
+    assert 'UNWARRANTED UNIT' not in mission['risk']
+    assert 'not final' in mission['live']['unit_verdict']
+    assert mission['permit_uncertain'] is True
+    assert any(f['flag']=='Permit uncertainty' for f in mission['flags'])
+    assert not any(f['severity']=='red' and f['flag']=='Illegal/unwarranted unit' for f in mission['flags'])
+
+def test_rate_override_in_intake_beats_live(monkeypatch):
+    monkeypatch.setattr(livedata,'fred_rate',lambda: (6.95,'2026-09-17'))
+    d=run({'rate_pct':5.5})
+    assert d['financing']['rate_pct']==5.5 and d['financing']['live'] is False
