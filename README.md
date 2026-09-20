@@ -8,7 +8,7 @@ Built for the Carbon-Silicon Hackathon "one-person entrepreneur" theme: one carb
 
 ## The demo in one line
 
-Four seeded buildings go in, eleven specialist roles check rents, layouts, permits, repairs, financing, and downside, and the Downside Reviewer catches an unwarranted in-law unit - stripping its unsupported rent drops the Richmond triplex from 105% claimed coverage to 68% defensible, and a legal duplex takes the top spot.
+Four seeded buildings go in, twelve specialist roles check rents, layouts, permits, repairs, financing, and downside, and the Downside Reviewer catches an unwarranted in-law unit - stripping its unsupported rent drops the Richmond triplex from 105% claimed coverage to 68% defensible, and a legal duplex takes the top spot.
 
 ## What's here
 

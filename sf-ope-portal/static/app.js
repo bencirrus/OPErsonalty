@@ -12,6 +12,15 @@ ${p.live.rent_board_note?`<div>${p.live.rent_board_note}</div>`:''}
 ${ov.length?`<div class="ov">${ov.map(o=>'Live data: '+o).join('<br>')}</div>`:''}
 <div class="srcs">Sources: <a href="https://data.sfgov.org/Housing-and-Buildings/Building-Permits/i98e-djp9">DataSF DBI Permits</a> · <a href="https://data.sfgov.org/Housing-and-Buildings/Rent-Board-Housing-Inventory/gdc7-dmcn">Rent Board Inventory</a></div>
 </details>`};
+const strblock=p=>{
+ if(!p.str)return'';
+ const s=p.str;
+ return`<details class="str"><summary>Short-term vs long-term rental</summary>
+<div>${s.summary} <span class="tag ${s.live?'src':'assume'}">${s.source_tag}</span></div>
+<div>${s.verdict}</div>
+<div><b>SF rules</b> <span class="tag src">${s.rules_source}</span><ul>${s.rules.map(r=>'<li>'+r+'</li>').join('')}</ul></div>
+<div>${s.seasonality.note} <span class="tag assume">${s.seasonality.source}</span></div>
+</details>`};
 const amenblock=p=>{
  if(!p.amenities)return'';
  const a=p.amenities;
@@ -33,9 +42,10 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <tr><td>Permits</td><td>${p.permit} <span class="tag ${p.sources.permit.startsWith('city')?'src':'assume'}">${p.sources.permit}</span></td></tr>
 <tr><td>Renovation (output)</td><td>${p.reno_scope} - ${p.reno} <span class="tag assume">${p.sources.reno}</span></td></tr>
 ${p.amenities?`<tr><td>Amenities</td><td>${p.amenities.summary} <span class="tag ${p.amenities.live?'src':'assume'}">${p.amenities.source_tag}</span></td></tr>`:''}
+${p.str?`<tr><td>STR vs LTR</td><td>${p.str.summary} <span class="tag ${p.str.live?'src':'assume'}">${p.str.source_tag}</span></td></tr>`:''}
 ${p.geo_how?`<tr><td>Your area</td><td>${p.geo_match?'Matches: '+p.geo_how:'No match'} </td></tr>`:''}
 </table>
-${amenblock(p)}
+${amenblock(p)}${strblock(p)}
 ${p.verify.length?`<div class="verify"><b>VERIFY:</b> ${p.verify.join('; ')}</div>`:''}
 ${liveblock(p)}
 <details class="stress"><summary>Downside stress panel</summary>${p.stress.map(s=>`<div class="${s.passes?'pass':'fail'}">${s.passes?'✓':'✗'} ${s.test}: residual $${s.residual}/wk</div>`).join('')}</details>
