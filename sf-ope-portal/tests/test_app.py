@@ -222,3 +222,33 @@ def test_zori_live_merge(monkeypatch):
     assert b['live'] is True
     assert b['zori']==4500 and b['month']=='2026-08-31'
     assert '$4,500/mo' in b['summary']
+
+
+def test_financing_fit_default():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    f=d['properties'][0]['financing_fit']
+    assert f['live'] is False
+    assert 'assumption' in f['source_tag']
+    assert 'not a credit pull' in f['source_tag']
+    assert 'income not provided' in f['summary']
+    assert f['loan_needed']>0
+
+
+def test_financing_fit_with_income():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={'other_monthly_income_usd':20000,'current_rent_usd':2400,'credit_score':740}).json()
+    f=d['properties'][0]['financing_fit']
+    p=d['properties'][0]
+    assert f['loan_needed']==p['price']-320000
+    assert f['net_new_monthly']==p['housing_cost']-2400
+    assert f['credit_band']=='strong'
+    assert 'plausible' in f['summary'] or 'a stretch' in f['summary'] or 'strong' in f['summary']
+
+
+def test_credit_bands():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={'other_monthly_income_usd':20000,'credit_score':600}).json()
+    assert d['properties'][0]['financing_fit']['credit_band']=='thin - approval gets hard'
+    d=c.post('/api/analyze',json={'other_monthly_income_usd':20000,'credit_score':500}).json()
+    assert d['properties'][0]['financing_fit']['credit_band']=='very hard'

@@ -20,6 +20,8 @@ class Intake(BaseModel):
     rate_pct:Optional[float]=None  # None = use the live FRED rate (seeded fallback offline)
     min_living_allowance_usd_per_week:int=100
     other_monthly_income_usd:int=0
+    current_rent_usd:int=0  # the OPE's current rent - freed when they move in
+    credit_score:Optional[int]=None
     owner_space:str='Studio + fridge + laundry'
     move_timeline_days:int=90
     geo_area:Optional[str]=None  # neighborhood, zip code, or landmark ("near Golden Gate Park")
@@ -212,6 +214,25 @@ def zori_block(seed,live):
     return {'live':False,'source_tag':'assumption (seeded)','zori':seed['zori_seeded'],'month':'seeded',
             'summary':'Zillow ZORI zip rent benchmark: $%s/mo (seeded - live Zillow Research feed offline)' % format(seed['zori_seeded'],',')}
 
+def financing_fit(p,intake):
+    """Affordability heuristic: loan gap vs stated income, rent, credit band. Assumption-tagged - no credit pull."""
+    loan=max(p['price']-intake.cash_available_usd,0)
+    income=intake.other_monthly_income_usd
+    rent=intake.current_rent_usd
+    score=intake.credit_score
+    band=('strong' if score>=740 else 'good' if score>=670 else 'thin - approval gets hard' if score>=580 else 'very hard') if score else 'not provided'
+    net_new=max(p['housing_cost']-rent,0)
+    if income:
+        dti=p['housing_cost']/income
+        dti_band=('strong' if dti<=0.28 else 'plausible' if dti<=0.36 else 'a stretch' if dti<=0.43 else 'unlikely')
+        summary=('$%s loan to cover the gap; net new monthly cost $%s after your current rent is freed; housing cost is %d%% of stated income (%s) at %s credit.' % (format(loan,','),format(net_new,','),round(dti*100),dti_band,band))
+        verdict='Covering the gap with a loan looks %s on these numbers.' % dti_band
+    else:
+        summary='$%s loan to cover the gap; income not provided - DTI not computed (%s credit).' % (format(loan,','),band)
+        verdict='Share income, current rent, and credit score for a financing-fit read.'
+    return{'live':False,'source_tag':'assumption (affordability heuristic - not a credit pull)',
+     'loan_needed':loan,'net_new_monthly':net_new,'credit_band':band,'summary':summary,'verdict':verdict}
+
 def analyze(intake:Intake,rate_pct:float):
     floor=intake.min_living_allowance_usd_per_week
     rows=[]
@@ -232,6 +253,7 @@ def analyze(intake:Intake,rate_pct:float):
         p['amenities']=amenities_block(seed,livedata.amenities_for(seed))
         p['str']=str_block(seed,livedata.str_comps(seed['geo'].get('neighborhood')))
         p['rent_benchmark']=zori_block(seed,livedata.zori_benchmark(seed['geo'].get('zip')))
+        p['financing_fit']=financing_fit(p,intake)
         coc=(p['verified_rent']-p['housing_cost'])*12/max(intake.cash_available_usd,1)
         rows.append({**p,**b,'live':live_block,'_coc':coc,
             'score_components':{
@@ -277,7 +299,7 @@ def agent_roster(live_on,rate_pct,rate_source,geo_area=None,amenities_live=False
       {'name':'Permit & Zoning Analyst','did':city_line,'question':'Is every unit in the listing actually legal?','evidence':'[city-record] SF DBI Building Permits (data.sfgov.org i98e-djp9) + Rent Board Housing Inventory (gdc7-dmcn), keyless live API; seeded record offline'},
       {'name':'Construction & Repair Estimator','did':'repair ranges attached','question':'What will it cost to fix?','evidence':'repair range per building [assumption]'},
       {'name':'Renovation Feasibility Planner','did':'scope classified per property','question':'How big is the renovation lift?','evidence':'scope classes: cosmetic / moderate / major permit work'},
-      {'name':'Financing Analyst','did':rate_line,'question':'What does the building cost to hold each month?','evidence':'[city-record] live 30-yr rate from FRED MORTGAGE30US (Freddie Mac PMMS) when online; seeded %s%% offline' % SEEDED_RATE_PCT},
+      {'name':'Financing Analyst','did':rate_line,'question':'What does the building cost to hold each month, and can the OPE cover the gap?','evidence':'[city-record] live 30-yr rate from FRED MORTGAGE30US when online; loan-gap + DTI financing fit vs stated income/rent/credit [assumption - no credit pull]'},
       {'name':'OpEx & Tax Analyst','did':'reserves included in seeded cost','question':'What does it cost to run, not just to buy?','evidence':'reserves + tax inside housing cost [assumption]'},
       {'name':'Short-Term Rental Analyst','did':('legal STR ceiling vs long-term rent compared per building using live Inside Airbnb SF comps + sf.gov rules' if str_live else 'legal STR ceiling vs long-term rent compared per building (seeded comps - offline fallback; sf.gov rules)'),'question':'Could short-term nightly renting beat a long-term tenant here?','evidence':'sf.gov Office of Short-Term Rentals rules [source] - owner unit only, 90 un-hosted nights/yr cap, 14% TOT; Inside Airbnb entire-home comps (or seeded) [source/assumption]; seasonality + conferences [assumption] - no free reliable feed'},
       {'name':'Downside Reviewer','did':'stress tests run; ranking recomputed after evidence check','question':'What breaks first when something goes wrong?','evidence':'stress panel (vacancy, rent cut, rate shock) at the live rate; penalties applied to the ranking'}]

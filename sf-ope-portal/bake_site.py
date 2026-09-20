@@ -38,7 +38,7 @@ async function sendback(pid){
 """async function decide(pid,dec){document.getElementById('st-'+pid).textContent='static snapshot - decisions need the live app (see sf-ope-portal/README.md)';}
 async function sendback(pid){document.getElementById('st-'+pid).textContent='static snapshot - send-back needs the live app (see sf-ope-portal/README.md)';}""")
 js = js.replace("""f.onsubmit=async e=>{e.preventDefault();
- let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:0,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
+ let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
  if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -60,6 +60,9 @@ html = """<!doctype html><html><head><meta charset="utf-8">
       <small id="rate-note" class="field-note">Baked from the live FRED weekly survey at snapshot time; this static form does not recompute.</small></label>
       <label>Minimum weekly living cash <div class="suffix"><input id="floor" type="number" value="100"><span>/ week</span></div></label>
       <label>Owner space <input value="Studio + fridge + laundry" disabled></label>
+      <label>Current monthly rent <div class="suffix"><input id="rent" type="number" value="2400"><span>/ mo</span></div></label>
+      <label>Monthly income <div class="suffix"><input id="income" type="number" value="14000"><span>/ mo</span></div></label>
+      <label>Credit score <input id="credit" type="number" placeholder="baked demo"></label>
       <label>Area to live <input id="geo" type="text" placeholder="baked demo - filter not recomputed"></label>
       <button>Run property team</button></form></section><section id="work" class="hide"><div class="runbar"><details class="team" id="team"><summary><span class="eyebrow">SILICON TEAM</span> <b>Evidence check complete</b> <span id="dm" class="tag src"></span></summary>
         <ol id="teamlog" class="teamlog"></ol></details><div id="agents" class="agents"></div></div>
