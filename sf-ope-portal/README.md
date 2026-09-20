@@ -27,12 +27,13 @@ Open http://127.0.0.1:8000. Click "Run property team." The silicon-team run log 
 
 Property names, prices, rents, costs, and renovation findings are seeded demo data - not real listings or advice. The seeded street addresses are fictional listing data chosen so the live record check is meaningful.
 
-Six adapters pull live public data (no API key; keyless throttled tier):
+Seven adapters pull live public data (no API key; keyless throttled tier):
 
 - `livedata.py` -> SF DBI Building Permits (`i98e-djp9`) and Rent Board Housing Inventory (`gdc7-dmcn`) on data.sfgov.org, checked per seeded address by the Permit & Zoning Analyst. Live wins over seeded where they disagree; the override is shown on the brief.
 - `livedata.py` -> FRED MORTGAGE30US via `fredgraph.csv` for the financing rate; the intake rate field is pre-filled from it.
 - `livedata.py` -> OpenStreetMap Overpass (grocery, transit-stop, and parking counts within ~0.5 mi) and Bay Wheels GBFS (bike-share stations) for the Neighborhood & Amenities Analyst. Corporate/tech shuttles are not public data, so they are always shown as an assumption, never fabricated.
 - `livedata.py` -> Inside Airbnb's public SF listings snapshot (entire-home nightly medians + licensed counts per neighborhood) plus the sf.gov Office of Short-Term Rentals rules for the Short-Term Rental Analyst. STR is legal only in the owner-occupied unit and capped at 90 un-hosted nights/yr (14% TOT); seasonality and conference demand are assumption-tagged, never priced.
+- `livedata.py` -> Zillow Research ZORI (Observed Rent Index, free CSV download, used with attribution) as a live rent benchmark per zip for the Rent-Roll Analyst.
 - The intake form's area filter (neighborhood name, zip, or a landmark like a park) filters the four seeded buildings: matches rank first; non-matches drop to the bottom marked "Outside your area".
 
 Offline behavior: any failure (network, throttle, schema change) falls back to the seeded record and the seeded 6.75% rate, and the page shows `seeded (offline)`. Results are cached in `.livedata-cache.json` (6h TTL) so demo runs stay polite to the keyless tier. Tests never touch the network - the HTTP layer is mocked.

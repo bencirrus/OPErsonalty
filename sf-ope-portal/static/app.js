@@ -43,6 +43,7 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <tr><td>Renovation (output)</td><td>${p.reno_scope} - ${p.reno} <span class="tag assume">${p.sources.reno}</span></td></tr>
 ${p.amenities?`<tr><td>Amenities</td><td>${p.amenities.summary} <span class="tag ${p.amenities.live?'src':'assume'}">${p.amenities.source_tag}</span></td></tr>`:''}
 ${p.str?`<tr><td>STR vs LTR</td><td>${p.str.summary} <span class="tag ${p.str.live?'src':'assume'}">${p.str.source_tag}</span></td></tr>`:''}
+${p.rent_benchmark?`<tr><td>Rent benchmark</td><td>${p.rent_benchmark.summary} <span class="tag ${p.rent_benchmark.live?'src':'assume'}">${p.rent_benchmark.source_tag}</span></td></tr>`:''}
 ${p.geo_how?`<tr><td>Your area</td><td>${p.geo_match?'Matches: '+p.geo_how:'No match'} </td></tr>`:''}
 </table>
 ${amenblock(p)}${strblock(p)}
