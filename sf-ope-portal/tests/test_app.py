@@ -189,6 +189,8 @@ def test_str_offline_seeded():
         assert '90 un-hosted nights' in s['summary']
         assert '14% TOT' in s['summary']
         assert len(s['rules'])==4
+        assert any('Dreamforce' in m['note'] for m in s['market_context'])
+        assert any('AirDNA' in b for b in s['build_later'])
 
 
 def test_str_live_merge(monkeypatch):

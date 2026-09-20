@@ -197,7 +197,12 @@ def str_block(seed,live):
      'summary':'$%d/night median entire-home comp%s. STR legal only in the owner unit, max 90 un-hosted nights/yr - <=$%d/mo gross ceiling before 14%% TOT and platform fees; tenant units stay long-term rental.' % (nightly,counts,ceiling),
      'verdict':'Long-term rental is the base case; short-term is a capped owner-unit option, not a building strategy.',
      'rules':STR_RULES,'rules_source':STR_RULES_SOURCE,
-     'seasonality':{'note':'Seasonality and conference demand are not freely available data - directional assumption only, not priced in.','source':'assumption'}}
+     'market_context':[
+       {'note':'Conference weeks compress SF lodging: Dreamforce 2026 runs Sept 15-17 at Moscone Center (salesforce.com), and the SF Standard ("Hotelmaggedon", Oct 2025) documents citywide hotel rate spikes when it lands.','source':'SF Standard + salesforce.com'},
+       {'note':'SF short-term demand is seasonal (summer + September conference peak); exact seasonal pricing is not freely available, so it is directional context, not a priced number.','source':'assumption'}],
+     'build_later':[
+       'AirDNA MarketMinder or Key Data (paid STR dashboards) would price true monthly seasonality and ADR.',
+       'SF Travel hotel occupancy/ADR statistics would ground conference-week uplift.']}
 
 def zori_block(seed,live):
     """Rent benchmark panel data: Zillow ZORI by zip (live), seeded offline."""

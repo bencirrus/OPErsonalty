@@ -19,7 +19,8 @@ const strblock=p=>{
 <div>${s.summary} <span class="tag ${s.live?'src':'assume'}">${s.source_tag}</span></div>
 <div>${s.verdict}</div>
 <div><b>SF rules</b> <span class="tag src">${s.rules_source}</span><ul>${s.rules.map(r=>'<li>'+r+'</li>').join('')}</ul></div>
-<div>${s.seasonality.note} <span class="tag assume">${s.seasonality.source}</span></div>
+${(s.market_context||[]).map(m=>'<div>'+m.note+' <span class="tag '+(m.source==='assumption'?'assume':'src')+'">'+m.source+'</span></div>').join('')}
+${(s.build_later||[]).length?'<div><b>Build later:</b> '+s.build_later.join(' ')+'</div>':''}
 </details>`};
 const amenblock=p=>{
  if(!p.amenities)return'';
