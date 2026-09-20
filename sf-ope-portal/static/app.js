@@ -12,7 +12,14 @@ ${p.live.rent_board_note?`<div>${p.live.rent_board_note}</div>`:''}
 ${ov.length?`<div class="ov">${ov.map(o=>'Live data: '+o).join('<br>')}</div>`:''}
 <div class="srcs">Sources: <a href="https://data.sfgov.org/Housing-and-Buildings/Building-Permits/i98e-djp9">DataSF DBI Permits</a> · <a href="https://data.sfgov.org/Housing-and-Buildings/Rent-Board-Housing-Inventory/gdc7-dmcn">Rent Board Inventory</a></div>
 </details>`};
-const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdict.startsWith('High risk')?'dim':''}">
+const amenblock=p=>{
+ if(!p.amenities)return'';
+ const a=p.amenities;
+ return`<details class="amen"><summary>Neighborhood amenities</summary>
+<div>${a.summary} <span class="tag ${a.live?'src':'assume'}">${a.source_tag}</span></div>
+<div>${a.shuttles.note} <span class="tag assume">${a.shuttles.source}</span></div>
+</details>`};
+const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdict.startsWith('High risk')||p.verdict.startsWith('Outside')?'dim':''}">
 <div class="rank">#${p.rank}</div>
 <div>
 <h3>${p.name}</h3>
@@ -25,7 +32,10 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <tr><td>Residual cash</td><td>${p.weekly_picture} (floor: $${p.floor}/wk)</td></tr>
 <tr><td>Permits</td><td>${p.permit} <span class="tag ${p.sources.permit.startsWith('city')?'src':'assume'}">${p.sources.permit}</span></td></tr>
 <tr><td>Renovation (output)</td><td>${p.reno_scope} - ${p.reno} <span class="tag assume">${p.sources.reno}</span></td></tr>
+${p.amenities?`<tr><td>Amenities</td><td>${p.amenities.summary} <span class="tag ${p.amenities.live?'src':'assume'}">${p.amenities.source_tag}</span></td></tr>`:''}
+${p.geo_how?`<tr><td>Your area</td><td>${p.geo_match?'Matches: '+p.geo_how:'No match'} </td></tr>`:''}
 </table>
+${amenblock(p)}
 ${p.verify.length?`<div class="verify"><b>VERIFY:</b> ${p.verify.join('; ')}</div>`:''}
 ${liveblock(p)}
 <details class="stress"><summary>Downside stress panel</summary>${p.stress.map(s=>`<div class="${s.passes?'pass':'fail'}">${s.passes?'✓':'✗'} ${s.test}: residual $${s.residual}/wk</div>`).join('')}</details>
@@ -59,7 +69,7 @@ function render(d){
  document.getElementById('dm').textContent=d.data_mode;
  teamlog.innerHTML=d.team_log.map(x=>`<li>${x}</li>`).join('');
  agents.innerHTML=d.agents.map(a=>`<details class="agent"><summary>${a.name}</summary><div class="ad"><p><b>This run:</b> ${a.did}</p><p><b>Asks:</b> ${a.question}</p><p><b>Key evidence:</b> ${a.evidence}</p></div></details>`).join('');
- summary.textContent=`${d.properties.length} buildings analyzed · price ceiling ${money(d.price_ceiling.max_purchase_price_usd)} [${d.price_ceiling.source}] · financing ${d.financing.rate_pct}% [${d.financing.source}]`;
+ summary.textContent=`${d.geo_area?`area "${d.geo_area}": ${d.geo_matched} of ${d.properties.length} match · `:''}${d.properties.length} buildings analyzed · price ceiling ${money(d.price_ceiling.max_purchase_price_usd)} [${d.price_ceiling.source}] · financing ${d.financing.rate_pct}% [${d.financing.source}]`;
  cards.innerHTML=d.properties.map(card).join('');
  work.classList.remove('hide');work.scrollIntoView({behavior:'smooth'});
 }
@@ -70,5 +80,6 @@ fetch('/api/config').then(r=>r.json()).then(cfg=>{
 f.onsubmit=async e=>{e.preventDefault();
  let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:0,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
+ if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
  render(await r.json())};
