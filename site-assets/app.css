@@ -24,3 +24,6 @@ details.live summary{cursor:pointer;color:var(--pine);font-weight:750}
 details.live .uv{font-weight:700;margin:6px 0}
 details.live .ov{color:var(--amber);margin:6px 0}
 details.live .srcs{color:var(--muted);margin-top:6px;font-size:11px}
+
+details.amen{margin:8px 0;font-size:12px}
+details.amen summary{cursor:pointer;color:var(--pine);font-weight:750}
