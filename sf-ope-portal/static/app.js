@@ -7,7 +7,7 @@ const liveblock=p=>{
  const d=p.live.dbi,rb=p.live.rent_board,ov=p.live.overrides||[];
  return`<details class="live"><summary>City record (live)</summary>
 ${p.live.unit_verdict?`<div class="uv">${p.live.unit_verdict}</div>`:''}
-${d?`<div>DBI Building Permits: ${d.permit_count} on record, latest #${d.latest_permit} (${d.latest_status}, filed ${d.latest_filed}).${d.unit_addition_permits.length?` Unit-addition permits: ${d.unit_addition_permits.map(a=>'#'+a.permit_number+' '+a.status+' '+a.from_units+'→'+a.to_units).join('; ')}.`:''}</div>`:''}
+${d?`<div>DBI Building Permits: ${d.permit_count} on record, latest #${d.latest_permit} (${d.latest_status==='filed'?'filed':d.latest_status+', filed'} ${d.latest_filed}).${d.unit_addition_permits.length?` Unit-addition permits: ${d.unit_addition_permits.map(a=>'#'+a.permit_number+' '+a.status+' '+a.from_units+'→'+a.to_units).join('; ')}.`:''}</div>`:''}
 ${p.live.rent_board_note?`<div>${p.live.rent_board_note}</div>`:''}
 ${ov.length?`<div class="ov">${ov.map(o=>'Live data: '+o).join('<br>')}</div>`:''}
 <div class="srcs">Sources: <a href="https://data.sfgov.org/Housing-and-Buildings/Building-Permits/i98e-djp9">DataSF DBI Permits</a> · <a href="https://data.sfgov.org/Housing-and-Buildings/Rent-Board-Housing-Inventory/gdc7-dmcn">Rent Board Inventory</a></div>
