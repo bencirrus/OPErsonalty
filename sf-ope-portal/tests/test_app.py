@@ -69,11 +69,11 @@ def test_rerank_deterministic():
     b=[(p['id'],p['rank'],p['score'],p['verdict']) for p in run()['properties']]
     assert a==b
 
-EXPECTED_TITLES=['Router / Orchestrator','Acquisition Scout','Rent-Roll Analyst','Layout & Owner-Unit Analyst','Neighborhood & Amenities Analyst','Permit & Zoning Analyst','Construction & Repair Estimator','Renovation Feasibility Planner','Financing Analyst','OpEx & Tax Analyst','Downside Reviewer']
+EXPECTED_TITLES=['Router / Orchestrator','Acquisition Scout','Rent-Roll Analyst','Layout & Owner-Unit Analyst','Neighborhood & Amenities Analyst','Permit & Zoning Analyst','Construction & Repair Estimator','Renovation Feasibility Planner','Financing Analyst','OpEx & Tax Analyst','Short-Term Rental Analyst','Downside Reviewer']
 
 def test_ten_roles_and_stress_panel():
     d=run()
-    assert len(d['agents'])==11
+    assert len(d['agents'])==12
     assert [a['name'] for a in d['agents']]==EXPECTED_TITLES
     for a in d['agents']:
         assert a['did'] and a['question'] and a['evidence'], a['name']
@@ -177,3 +177,26 @@ def test_amenities_live_merge(monkeypatch):
     assert a['live'] is True and 'OpenStreetMap' in a['source_tag']
     assert a['groceries']==21 and a['bike_share']==4
     assert '21 groceries' in a['summary']
+
+
+def test_str_offline_seeded():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    for p in d['properties']:
+        s=p['str']
+        assert s['live'] is False
+        assert s['source_tag']=='assumption (seeded)'
+        assert '90 un-hosted nights' in s['summary']
+        assert '14% TOT' in s['summary']
+        assert len(s['rules'])==4
+
+
+def test_str_live_merge(monkeypatch):
+    monkeypatch.setattr(livedata,'str_comps',lambda neighborhood: {'median_nightly':300,'n_listings':50,'n_licensed':40,'snapshot':'June 2026'})
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    s=d['properties'][0]['str']
+    assert s['live'] is True
+    assert s['source_tag'].startswith('Inside Airbnb')
+    assert s['unhosted_ceiling_monthly']==round(300*90/12)
+    assert '50 entire-home listings, 40 licensed' in s['summary']

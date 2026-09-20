@@ -289,3 +289,33 @@ def amenities_for(prop):
     out = ov or {'groceries': None, 'transit_stops': None, 'parking': None}
     out['bike_share'] = bikes
     return out
+
+INSIDE_AIRBNB_SF_URL = 'https://data.insideairbnb.com/united-states/ca/san-francisco/2026-06-14/visualisations/listings.csv'
+INSIDE_AIRBNB_SNAPSHOT = 'June 2026'
+
+
+def str_comps(neighborhood):
+    """Entire-home short-term-rental comps for an SF neighbourhood (Inside Airbnb snapshot). None on failure."""
+    def fetch():
+        import csv, io
+        raw = _http_get(INSIDE_AIRBNB_SF_URL)
+        rows = list(csv.DictReader(io.StringIO(raw.decode('utf-8', 'replace'))))
+        prices = []
+        licensed = 0
+        for r in rows:
+            if r.get('neighbourhood') != neighborhood or r.get('room_type') != 'Entire home/apt':
+                continue
+            try:
+                prices.append(float((r.get('price') or '').replace('$', '').replace(',', '')))
+            except ValueError:
+                continue
+            if (r.get('license') or '').strip():
+                licensed += 1
+        if not prices:
+            raise ValueError('no comps for %s' % neighborhood)
+        prices.sort()
+        mid = len(prices) // 2
+        med = prices[mid] if len(prices) % 2 else (prices[mid - 1] + prices[mid]) / 2
+        return {'median_nightly': round(med), 'n_listings': len(prices),
+                'n_licensed': licensed, 'snapshot': INSIDE_AIRBNB_SNAPSHOT}
+    return _cached('str:' + (neighborhood or '').lower(), fetch)
