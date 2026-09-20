@@ -69,15 +69,15 @@ def test_rerank_deterministic():
     b=[(p['id'],p['rank'],p['score'],p['verdict']) for p in run()['properties']]
     assert a==b
 
-EXPECTED_TITLES=['Router / Orchestrator','Acquisition Scout','Rent-Roll Analyst','Layout & Owner-Unit Analyst','Permit & Zoning Analyst','Construction & Repair Estimator','Renovation Feasibility Planner','Financing Analyst','OpEx & Tax Analyst','Downside Reviewer']
+EXPECTED_TITLES=['Router / Orchestrator','Acquisition Scout','Rent-Roll Analyst','Layout & Owner-Unit Analyst','Neighborhood & Amenities Analyst','Permit & Zoning Analyst','Construction & Repair Estimator','Renovation Feasibility Planner','Financing Analyst','OpEx & Tax Analyst','Downside Reviewer']
 
 def test_ten_roles_and_stress_panel():
     d=run()
-    assert len(d['agents'])==10
+    assert len(d['agents'])==11
     assert [a['name'] for a in d['agents']]==EXPECTED_TITLES
     for a in d['agents']:
         assert a['did'] and a['question'] and a['evidence'], a['name']
-    assert len(d['team_log'])>=4
+    assert len(d['team_log'])>=5
     for p in d['properties']:
         assert len(p['stress'])==3 and all('passes' in s for s in p['stress'])
 
@@ -137,3 +137,43 @@ def test_rate_override_in_intake_beats_live(monkeypatch):
     monkeypatch.setattr(livedata,'fred_rate',lambda: (6.95,'2026-09-17'))
     d=run({'rate_pct':5.5})
     assert d['financing']['rate_pct']==5.5 and d['financing']['live'] is False
+
+
+def test_geo_filter_zip():
+    d=run({'geo_area':'94118'})
+    assert d['geo_area']=='94118' and d['geo_matched']==1
+    rich=next(p for p in d['properties'] if p['id']=='richmond-3')
+    assert rich['geo_match'] is True and rich['geo_how']=='zip 94118'
+    others=[p for p in d['properties'] if p['id']!='richmond-3']
+    assert all(p['geo_match'] is False and p['verdict']=='Outside your area' for p in others)
+    assert rich['rank']==1 and all(p['penalties']>=50 for p in others)
+
+def test_geo_filter_landmark():
+    d=run({'geo_area':'near Golden Gate Park'})
+    matched={p['id'] for p in d['properties'] if p['geo_match']}
+    assert matched=={'richmond-3','sunset-2'}
+    rich=next(p for p in d['properties'] if p['id']=='richmond-3')
+    assert 'Golden Gate Park' in rich['geo_how']
+
+def test_geo_filter_neighborhood():
+    d=run({'geo_area':'the mission'})
+    assert d['geo_matched']==1
+    m=next(p for p in d['properties'] if p['id']=='mission-3')
+    assert m['geo_match'] is True and m['geo_how']=='neighborhood Mission'
+    assert m['verdict']!='Outside your area'
+
+def test_amenities_offline_seeded():
+    d=run()
+    for p in d['properties']:
+        a=p['amenities']
+        assert a['live'] is False and a['source_tag']=='assumption (seeded)'
+        assert a['groceries']>0 and a['transit_stops']>0
+        assert 'not public data' in a['shuttles']['note'] and a['shuttles']['source']=='assumption'
+
+def test_amenities_live_merge(monkeypatch):
+    monkeypatch.setattr(livedata,'amenities_for',lambda prop: {'groceries':21,'transit_stops':30,'parking':7,'bike_share':4})
+    d=run()
+    a=d['properties'][0]['amenities']
+    assert a['live'] is True and 'OpenStreetMap' in a['source_tag']
+    assert a['groceries']==21 and a['bike_share']==4
+    assert '21 groceries' in a['summary']

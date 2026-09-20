@@ -22,19 +22,28 @@ class Intake(BaseModel):
     other_monthly_income_usd:int=0
     owner_space:str='Studio + fridge + laundry'
     move_timeline_days:int=90
+    geo_area:Optional[str]=None  # neighborhood, zip code, or landmark ("near Golden Gate Park")
 
 # Seeded demo listings (fictional). Addresses are seeded listing data; the
 # Permit & Zoning Analyst checks them against live DataSF city records when
 # online and falls back to the seeded city record offline.
 SEEDED=[
  {'id':'richmond-3','name':'Richmond 3-unit','price':1495000,'units':3,'rent_claim':9900,'verified_rent':6400,'housing_cost':9410,'owner':'Garden studio · kitchenette · shared laundry','owner_fit':0.5,'reno':'Major permit work','reno_scope':'major','permit':'Unit 3 has no permit history','evidence':72,'risk':['UNWARRANTED UNIT','UNSUPPORTED RENT'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'city-record DBI-2026-0417','permit':'city-record DBI-2026-0417','reno':'assumption','housing_cost':'assumption'},'verify':[],
-  'address':{'street_number':'648','street_name':'06th','street_suffix':'Av','display':'648 6th Ave, Inner Richmond'},'block_address':'600 Block of 06TH AVE'},
+  'address':{'street_number':'648','street_name':'06th','street_suffix':'Av','display':'648 6th Ave, Inner Richmond'},'block_address':'600 Block of 06TH AVE',
+  'geo':{'lat':37.776349923,'lon':-122.463617563,'neighborhood':'Inner Richmond','zip':'94118','landmarks':{'Golden Gate Park':0.4,'De Young Museum':0.6,'Clement Street':0.2,'Presidio':1.2}},
+  'amenities_seeded':{'groceries':9,'transit_stops':12,'parking':4,'bike_share':2}},
  {'id':'excelsior-2','name':'Excelsior legal duplex','price':1195000,'units':2,'rent_claim':7600,'verified_rent':7600,'housing_cost':7089,'owner':'Legal studio · fridge · laundry confirmed','owner_fit':1.0,'reno':'Cosmetic · $18K range','reno_scope':'cosmetic','permit':'Two legal units in seeded city record','evidence':91,'risk':['TIGHT WEEKLY CASH'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 246 Lisbon St $3,800','permit':'city-record DBI-2026-0288','reno':'assumption','housing_cost':'assumption'},'verify':[],
-  'address':{'street_number':'126','street_name':'Lisbon','street_suffix':'St','display':'126 Lisbon St, Excelsior'},'block_address':'100 Block of LISBON ST'},
+  'address':{'street_number':'126','street_name':'Lisbon','street_suffix':'St','display':'126 Lisbon St, Excelsior'},'block_address':'100 Block of LISBON ST',
+  'geo':{'lat':37.726327487,'lon':-122.430671694,'neighborhood':'Excelsior','zip':'94112','landmarks':{'McLaren Park':0.7,'Excelsior Playground':0.3,'Balboa Park BART':0.9}},
+  'amenities_seeded':{'groceries':6,'transit_stops':9,'parking':3,'bike_share':1}},
  {'id':'mission-3','name':'Mission 3-unit','price':1675000,'units':3,'rent_claim':9700,'verified_rent':8950,'housing_cost':10840,'owner':'1BR · kitchen · laundry nearby','owner_fit':0.5,'reno':'Moderate · $55K-$90K','reno_scope':'moderate','permit':'Rear addition requires verification','evidence':78,'risk':['PERMIT VERIFY','PRICE CEILING'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 3025 24th St $3,100','permit':'assumption','reno':'assumption','housing_cost':'assumption'},'verify':['Rear addition has no permit record - is the third unit legal?'],
-  'address':{'street_number':'737','street_name':'Guerrero','street_suffix':'St','display':'737 Guerrero St, Mission'},'block_address':'700 Block of GUERRERO ST'},
+  'address':{'street_number':'737','street_name':'Guerrero','street_suffix':'St','display':'737 Guerrero St, Mission'},'block_address':'700 Block of GUERRERO ST',
+  'geo':{'lat':37.759356635,'lon':-122.423288149,'neighborhood':'Mission','zip':'94110','landmarks':{'Dolores Park':0.5,'Valencia Corridor':0.3,'16th St Mission BART':0.7}},
+  'amenities_seeded':{'groceries':14,'transit_stops':18,'parking':6,'bike_share':5}},
  {'id':'sunset-2','name':'Outer Sunset duplex','price':1280000,'units':2,'rent_claim':7200,'verified_rent':7000,'housing_cost':8460,'owner':'Studio conversion assumed · laundry','owner_fit':0.5,'reno':'Moderate · $35K-$60K','reno_scope':'moderate','permit':'Conversion feasibility unverified','evidence':75,'risk':['LAYOUT ASSUMPTION'],'sources':{'price':'listing','rent_claim':'listing','verified_rent':'market-comp 2211 Irving St $3,500','permit':'assumption','reno':'assumption','housing_cost':'assumption'},'verify':['Studio conversion legality unverified - confirm the owner unit is legal'],
-  'address':{'street_number':'1414','street_name':'38th','street_suffix':'Av','display':'1414 38th Ave, Outer Sunset'},'block_address':'1400 Block of 38TH AVE'}
+  'address':{'street_number':'1414','street_name':'38th','street_suffix':'Av','display':'1414 38th Ave, Outer Sunset'},'block_address':'1400 Block of 38TH AVE',
+  'geo':{'lat':37.760466195,'lon':-122.497043716,'neighborhood':'Outer Sunset','zip':'94122','landmarks':{'Golden Gate Park':0.6,'Ocean Beach':1.1,'Sunset Reservoir':0.3,'N Judah line':0.4}},
+  'amenities_seeded':{'groceries':7,'transit_stops':10,'parking':2,'bike_share':1}}
 ]
 
 DECISIONS={}
@@ -132,15 +141,60 @@ def merge_live(p,live):
             block['rent_board_note']='Rent Board Housing Inventory: no submissions on record for %s.' % (p.get('block_address') or 'this block')
     return block
 
+
+def geo_match(prop,query):
+    """(matched, how). Matches zip, neighborhood name, or landmark against the seeded geo block."""
+    import re
+    q=' '+query.lower().strip()+' '
+    for filler in (' near ',' around ',' close to ',' by ',' in ',' the '):
+        q=q.replace(filler,' ')
+    q=' '.join(q.split())
+    g=prop.get('geo') or {}
+    if re.search(r'\b\d{5}\b',q):
+        return (re.search(r'\b\d{5}\b',q).group(0)==g.get('zip'), 'zip %s' % g.get('zip'))
+    hood=(g.get('neighborhood') or '').lower()
+    if q and (q in hood or hood in q):
+        return True,'neighborhood %s' % g.get('neighborhood')
+    for name,dist in (g.get('landmarks') or {}).items():
+        n=name.lower()
+        if len(q)>=4 and (q in n or n in q):
+            return True,'%g mi from %s' % (dist,name)
+    return False,'no match'
+
+def amenities_block(prop,live):
+    """Amenities panel data: live OpenStreetMap/Bay Wheels when reachable, seeded otherwise."""
+    base=prop['amenities_seeded']
+    if live:
+        merged={k:(live.get(k) if live.get(k) is not None else base[k]) for k in base}
+        tag='OpenStreetMap + Bay Wheels (live)'
+        is_live=True
+    else:
+        merged=dict(base)
+        tag='assumption (seeded)'
+        is_live=False
+    return {'groceries':merged['groceries'],'transit_stops':merged['transit_stops'],'parking':merged['parking'],
+            'bike_share':merged['bike_share'],'radius':'~0.5 mi','live':is_live,'source_tag':tag,
+            'summary':'%d groceries · %d transit stops · %d parking lots · %d bike-share docks within ~0.5 mi' % (merged['groceries'],merged['transit_stops'],merged['parking'],merged['bike_share']),
+            'shuttles':{'note':'Tech and corporate shuttles are not public data - not vetted.','source':'assumption'}}
+
 def analyze(intake:Intake,rate_pct:float):
     floor=intake.min_living_allowance_usd_per_week
     rows=[]
     any_live=False
+    geo_area=(intake.geo_area or '').strip() or None
     for seed in SEEDED:
         p={**seed,'risk':list(seed['risk']),'sources':dict(seed['sources']),'verify':list(seed['verify'])}
         live_block=merge_live(p,livedata.city_record(seed))
         any_live=any_live or bool(live_block and live_block.get('dbi'))
         b=brief_for(p,intake,rate_pct)
+        if geo_area:
+            matched,how=geo_match(seed,geo_area)
+            p['geo_match']=matched
+            p['geo_how']=how
+            if not matched:
+                b['verdict']='Outside your area'
+                b['flags']=b['flags']+[{'severity':'amber','flag':'Outside your area','text':'Does not match the area you asked for ("%s"). Kept for comparison, excluded from recommended.' % geo_area}]
+        p['amenities']=amenities_block(seed,livedata.amenities_for(seed))
         coc=(p['verified_rent']-p['housing_cost'])*12/max(intake.cash_available_usd,1)
         rows.append({**p,**b,'live':live_block,'_coc':coc,
             'score_components':{
@@ -154,13 +208,14 @@ def analyze(intake:Intake,rate_pct:float):
     for r in rows:
         r['score_components']['cash_on_cash']=round(15*((r['_coc']-lo)/(hi-lo) if hi>lo else 0.5),2)
         base=sum(r['score_components'].values())
-        penalties=(30 if 'UNWARRANTED UNIT' in r['risk'] else 0)+(25 if r['below_floor'] else 0)+(10 if r['permit_uncertain'] else 0)+(10 if r['stress_fail'] else 0)
+        penalties=(30 if 'UNWARRANTED UNIT' in r['risk'] else 0)+(25 if r['below_floor'] else 0)+(10 if r['permit_uncertain'] else 0)+(10 if r['stress_fail'] else 0)+(50 if r.get('geo_match') is False else 0)
         r['penalties']=penalties
         r['score']=round(base-penalties,2)
         del r['_coc']
-    rows.sort(key=lambda x:x['score'],reverse=True)
+    rows.sort(key=lambda x:(x.get('geo_match') is False,-x['score']))
     for i,r in enumerate(rows): r['rank']=i+1
-    return rows,any_live
+    matched=sum(1 for r in rows if r.get('geo_match') is not False) if geo_area else None
+    return rows,any_live,matched
 
 class Decision(BaseModel):
     run_id:str
@@ -172,15 +227,16 @@ class SendBack(BaseModel):
     property_id:str
     note:str
 
-def agent_roster(live_on,rate_pct,rate_source):
+def agent_roster(live_on,rate_pct,rate_source,geo_area=None,amenities_live=False):
     city_line=('live DataSF DBI permits + Rent Board Housing Inventory checked for all 4 seeded addresses'
                if live_on else 'seeded city record checked (live DataSF unreachable - offline fallback)')
     rate_line='housing cost scenarios calculated at %.2f%% [%s]' % (rate_pct,rate_source)
     return [
       {'name':'Router / Orchestrator','did':'typed task packets emitted per property','question':'Who needs to look at this building, and in what order?','evidence':'run log: all ten roles executed in sequence per property'},
-      {'name':'Acquisition Scout','did':'4 seeded listings screened against price, units, filters','question':'Which buildings fit the budget and basic filters at all?','evidence':'listing screens, price ceiling [assumption]'},
+      {'name':'Acquisition Scout','did':'4 seeded listings screened against price, units, filters' + (', area filter "%s" applied' % geo_area if geo_area else ''),'question':'Which buildings fit the budget and basic filters at all?','evidence':'listing screens, price ceiling [assumption], geo area match (neighborhood, zip, landmark) [listing]'},
       {'name':'Rent-Roll Analyst','did':'claimed rents separated from defensible rents','question':'Which rents are real, and which are wishful?','evidence':'claimed vs defensible rent per unit, market comps [market-comp]'},
       {'name':'Layout & Owner-Unit Analyst','did':'owner-unit necessities checked','question':'Can the owner actually live here?','evidence':'owner-unit checklist: legal space, fridge, laundry'},
+      {'name':'Neighborhood & Amenities Analyst','did':('live OpenStreetMap + Bay Wheels check around each seeded address' if amenities_live else 'seeded amenities screen (live map data unreachable - offline fallback)'),'question':'What is daily life like around this address?','evidence':'[city-record] OpenStreetMap (Overpass) groceries, transit stops, parking + Bay Wheels GBFS bike docks within ~0.5 mi; tech shuttles [assumption] - not public data'},
       {'name':'Permit & Zoning Analyst','did':city_line,'question':'Is every unit in the listing actually legal?','evidence':'[city-record] SF DBI Building Permits (data.sfgov.org i98e-djp9) + Rent Board Housing Inventory (gdc7-dmcn), keyless live API; seeded record offline'},
       {'name':'Construction & Repair Estimator','did':'repair ranges attached','question':'What will it cost to fix?','evidence':'repair range per building [assumption]'},
       {'name':'Renovation Feasibility Planner','did':'scope classified per property','question':'How big is the renovation lift?','evidence':'scope classes: cosmetic / moderate / major permit work'},
@@ -201,19 +257,23 @@ def config():
 def run(intake:Intake):
     rate,rate_source,rate_live=resolve_rate(intake)
     ceiling=intake.max_purchase_price_usd or round(intake.cash_available_usd/0.22)
-    properties,any_live=analyze(intake,rate)
+    properties,any_live,matched=analyze(intake,rate)
+    geo_area=(intake.geo_area or '').strip() or None
+    amenities_live=any(p['amenities']['live'] for p in properties)
     team_log=[
         'Router / Orchestrator split the intake into 4 typed task packets, one per building.',
         'Acquisition Scout screened the seeded listings against the price ceiling.',
         'Rent-Roll, Layout & Owner-Unit, Construction & Repair, Renovation Feasibility, Financing, and OpEx & Tax specialists filed evidence-tagged findings per building.',
+        ('Acquisition Scout applied the area filter "%s" - %d of 4 buildings match.' % (geo_area,matched)) if geo_area else 'No area filter set - all 4 buildings screened.',
+        'Neighborhood & Amenities Analyst vetted groceries, transit, parking, and bike-share around each address ('+('live OpenStreetMap + Bay Wheels data' if amenities_live else 'seeded data - offline fallback')+'); tech shuttles are not public data.',
         'Permit & Zoning Analyst checked '+('live DataSF DBI permits and Rent Board Housing Inventory for each seeded address' if any_live else 'the seeded city record (live DataSF unreachable - offline fallback)')+'.',
         'Downside Reviewer ran 3 downside stress tests per building at %.2f%% and recomputed the ranking after the evidence check.' % rate,
     ]
-    return {'run_id':str(uuid.uuid4())[:8],'team_log':team_log,'seeded_demo':True,'data_mode':'live city records' if any_live else 'seeded (offline)','intake':intake.model_dump(),
+    return {'run_id':str(uuid.uuid4())[:8],'team_log':team_log,'geo_area':geo_area,'geo_matched':matched,'seeded_demo':True,'data_mode':'live city records' if any_live else 'seeded (offline)','intake':intake.model_dump(),
         'financing':{'rate_pct':rate,'source':rate_source,'live':rate_live,'series_url':livedata.FRED_SERIES_URL},
         'price_ceiling':{'max_purchase_price_usd':ceiling,'source':'assumption' if not intake.max_purchase_price_usd else 'listing','note':'Derived from cash + conventional 20% down preset' if not intake.max_purchase_price_usd else 'Set in intake'},
         'properties':properties,
-        'agents':agent_roster(any_live,rate,rate_source)}
+        'agents':agent_roster(any_live,rate,rate_source,geo_area,amenities_live)}
 
 @app.post('/api/decide')
 def decide(d:Decision):
@@ -223,7 +283,7 @@ def decide(d:Decision):
 
 @app.post('/api/sendback')
 def sendback(s:SendBack):
-    rows,_=analyze(Intake(),SEEDED_RATE_PCT)
+    rows,_,_=analyze(Intake(),SEEDED_RATE_PCT)
     prop=next((p for p in rows if p['id']==s.property_id),None)
     if not prop: return {'error':'unknown property_id'}
     SENDBACKS.setdefault((s.run_id,s.property_id),[]).append(s.note)

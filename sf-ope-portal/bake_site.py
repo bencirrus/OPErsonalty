@@ -40,9 +40,11 @@ async function sendback(pid){document.getElementById('st-'+pid).textContent='sta
 js = js.replace("""f.onsubmit=async e=>{e.preventDefault();
  let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:0,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
+ if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
  render(await r.json())};""",
 """f.onsubmit=e=>{e.preventDefault();render(DEMO)};""")
+assert 'render(DEMO)};' in js, 'onsubmit replacement failed'
 assert 'fetch(' not in js.split('DEMO.financing.rate_pct', 1)[1], 'live fetch left in static js'
 (SITE / 'site-assets/app.js').write_text(header + 'const DEMO=' + json.dumps(demo) + ';\n' + js)
 (SITE / 'site-assets/app.css').write_text((ROOT / 'static/app.css').read_text())
@@ -58,6 +60,7 @@ html = """<!doctype html><html><head><meta charset="utf-8">
       <small id="rate-note" class="field-note">Baked from the live FRED weekly survey at snapshot time; this static form does not recompute.</small></label>
       <label>Minimum weekly living cash <div class="suffix"><input id="floor" type="number" value="100"><span>/ week</span></div></label>
       <label>Owner space <input value="Studio + fridge + laundry" disabled></label>
+      <label>Area to live <input id="geo" type="text" placeholder="baked demo - filter not recomputed"></label>
       <button>Run property team</button></form></section><section id="work" class="hide"><div class="runbar"><details class="team" id="team"><summary><span class="eyebrow">SILICON TEAM</span> <b>Evidence check complete</b> <span id="dm" class="tag src"></span></summary>
         <ol id="teamlog" class="teamlog"></ol></details><div id="agents" class="agents"></div></div>
         <div class="decision"><div><p class="eyebrow">RANKED PITCHES</p><h2 id="summary"></h2></div><div class="legend"><span class="tag src">SOURCE</span>

@@ -10,3 +10,4 @@ def _offline_by_default(monkeypatch):
     unless a test patches in its own fixtures."""
     monkeypatch.setattr(livedata,'city_record',lambda prop: None)
     monkeypatch.setattr(livedata,'fred_rate',lambda: None)
+    monkeypatch.setattr(livedata,'amenities_for',lambda prop: None)

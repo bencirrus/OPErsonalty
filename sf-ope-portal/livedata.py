@@ -64,7 +64,10 @@ def _cached(key, fetch):
     now = time.time()
     if hit and now - hit.get('ts', 0) < CACHE_TTL_SECONDS:
         return hit['value']
-    value = fetch()
+    try:
+        value = fetch()
+    except Exception:
+        return None
     if value is not None:
         cache[key] = {'ts': now, 'value': value}
         _cache_write(cache)
@@ -209,3 +212,80 @@ def fred_rate():
     if r is None:
         return None
     return (r[0], r[1])
+
+
+OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+GBFS_URL = 'https://gbfs.baywheels.com/gbfs/en/station_information.json'
+AMENITY_RADIUS_M = 800  # ~0.5 mile
+
+
+def _haversine_m(lat1, lon1, lat2, lon2):
+    from math import asin, cos, radians, sin, sqrt
+    r = 6371000.0
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    return 2 * r * asin(sqrt(a))
+
+
+OVERPASS_CAP = 400
+
+
+def overpass_amenities(lat, lon):
+    """Live amenity counts near a point from OpenStreetMap (one union query). None on failure."""
+    def fetch():
+        q = ('[out:json][timeout:20];('
+             'nwr(around:%d,%f,%f)["shop"~"supermarket|convenience|greengrocer|grocery"];'
+             'nwr(around:600,%f,%f)["highway"="bus_stop"];'
+             'nwr(around:%d,%f,%f)["public_transport"~"platform|station|stop_position"];'
+             'nwr(around:%d,%f,%f)["amenity"="parking"];'
+             ');out tags %d;' % (AMENITY_RADIUS_M, lat, lon, lat, lon,
+                                 AMENITY_RADIUS_M, lat, lon, AMENITY_RADIUS_M, lat, lon, OVERPASS_CAP))
+        url = OVERPASS_URL + '?' + urllib.parse.urlencode({'data': q})
+        req = urllib.request.Request(url, headers=_UA)
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read())
+        counts = {'groceries': 0, 'transit_stops': 0, 'parking': 0}
+        for el in data.get('elements') or []:
+            tags = el.get('tags') or {}
+            if tags.get('amenity') == 'parking':
+                counts['parking'] += 1
+            elif tags.get('highway') == 'bus_stop' or 'public_transport' in tags:
+                counts['transit_stops'] += 1
+            elif 'shop' in tags:
+                counts['groceries'] += 1
+        counts['capped'] = len(data.get('elements') or []) >= OVERPASS_CAP
+        return counts
+    return _cached('overpass:%.4f,%.4f' % (lat, lon), fetch)
+
+
+def _baywheels_stations():
+    def fetch():
+        data = json.loads(_http_get(GBFS_URL))
+        stations = ((data.get('data') or {}).get('stations')) or []
+        return [{'lat': st.get('lat'), 'lon': st.get('lon'), 'name': st.get('name')} for st in stations]
+    return _cached('gbfs:stations', fetch)
+
+
+def baywheels_near(lat, lon, radius_m=AMENITY_RADIUS_M):
+    """Count of Bay Wheels bike-share stations near a point. None on failure."""
+    stations = _baywheels_stations()
+    if stations is None:
+        return None
+    return sum(1 for st in stations
+               if st['lat'] is not None and _haversine_m(lat, lon, st['lat'], st['lon']) <= radius_m)
+
+
+def amenities_for(prop):
+    """Live amenity bundle for one seeded property. None when fully unreachable."""
+    geo = prop.get('geo') or {}
+    lat, lon = geo.get('lat'), geo.get('lon')
+    if lat is None or lon is None:
+        return None
+    ov = overpass_amenities(lat, lon)
+    bikes = baywheels_near(lat, lon)
+    if ov is None and bikes is None:
+        return None
+    out = ov or {'groceries': None, 'transit_stops': None, 'parking': None}
+    out['bike_share'] = bikes
+    return out
