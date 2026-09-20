@@ -4,11 +4,13 @@
 </head>
   <body><main><header><div class="brand">SF OPE <b>Homebase</b></div>
     <div class="pill">Static snapshot - seeded demo</div>
-  </header><section class="hero"><div><p class="eyebrow">A HOME THAT RUNS LIKE A SMALL BUSINESS</p><h1>Find the building that gives you room to breathe for your next venture .</h1><p class="lede">Answer a few questions. A silicon team checks rents, layouts, permits, repairs, financing, and downside, then pitches the evidence.</p></div>
-    <form id="intake"><label>Cash available <input id="cash" type="number" value="320000"></label><label>Financing rate <div class="suffix"><input id="rate" type="number" step=".01" value="6.75"><span>%</span></div></label>
+  </header><section class="hero"><div><p class="eyebrow">A HOME THAT RUNS LIKE A SMALL BUSINESS</p><h1>Find the building that gives you room to breathe for your next venture.</h1><p class="lede">Answer a few questions. A silicon team checks rents, layouts, permits, repairs, financing, and downside, then pitches the evidence.</p></div>
+    <form id="intake"><label>Cash available <input id="cash" type="number" value="320000"></label><label>Financing rate <div class="suffix"><input id="rate" type="number" step=".01" value="6.95"><span>%</span></div>
+      <small id="rate-note" class="field-note">Baked from the live FRED weekly survey at snapshot time; this static form does not recompute.</small></label>
       <label>Minimum weekly living cash <div class="suffix"><input id="floor" type="number" value="100"><span>/ week</span></div></label>
       <label>Owner space <input value="Studio + fridge + laundry" disabled></label>
-      <button>Run property team</button></form></section><section id="work" class="hide"><div class="runbar"><div><p class="eyebrow">SILICON TEAM</p><h2>Evidence check complete</h2></div><div id="agents" class="agents"></div></div>
+      <button>Run property team</button></form></section><section id="work" class="hide"><div class="runbar"><details class="team" id="team"><summary><span class="eyebrow">SILICON TEAM</span> <b>Evidence check complete</b> <span id="dm" class="tag src"></span></summary>
+        <ol id="teamlog" class="teamlog"></ol></details><div id="agents" class="agents"></div></div>
         <div class="decision"><div><p class="eyebrow">RANKED PITCHES</p><h2 id="summary"></h2></div><div class="legend"><span class="tag src">SOURCE</span>
           <span class="tag assume">ASSUMPTION</span>
           <span class="risk">RED FLAG</span>
