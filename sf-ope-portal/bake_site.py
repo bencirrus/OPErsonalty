@@ -51,9 +51,9 @@ assert 'fetch(' not in js.split('DEMO.financing.rate_pct', 1)[1], 'live fetch le
 
 html = """<!doctype html><html><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SF OPE Homebase</title><link rel="stylesheet" href="site-assets/app.css">
+  <title>OPErsonalty</title><link rel="stylesheet" href="site-assets/app.css">
 </head>
-  <body><main><header><div class="brand">SF OPE <b>Homebase</b></div>
+  <body><main><header><div class="brand">OPE<b>rsonalty</b></div>
     <div class="pill">Static snapshot - seeded demo</div>
   </header><section class="hero"><div><p class="eyebrow">A HOME THAT RUNS LIKE A SMALL BUSINESS</p><h1>Find the building that gives you room to breathe for your next venture.</h1><p class="lede">Answer a few questions. A silicon team checks rents, layouts, permits, repairs, financing, and downside, then pitches the evidence.</p></div>
     <form id="intake"><label>Cash available <input id="cash" type="number" value="320000"></label><label>Financing rate <div class="suffix"><input id="rate" type="number" step=".01" value="RATEVALUE"><span>%</span></div>
