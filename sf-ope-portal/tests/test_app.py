@@ -252,3 +252,22 @@ def test_credit_bands():
     assert d['properties'][0]['financing_fit']['credit_band']=='thin - approval gets hard'
     d=c.post('/api/analyze',json={'other_monthly_income_usd':20000,'credit_score':500}).json()
     assert d['properties'][0]['financing_fit']['credit_band']=='very hard'
+
+
+def test_events_stream():
+    c=TestClient(app)
+    d=c.post('/api/analyze',json={}).json()
+    ev=d['events']
+    assert len(ev)>=20
+    assert [e['seq'] for e in ev]==list(range(1,len(ev)+1))
+    kinds={e['kind'] for e in ev}
+    assert kinds=={'packet','fetch','finding','handoff'}
+    agents={e['agent'] for e in ev}
+    for needed in ['Router / Orchestrator','Permit & Zoning Analyst','Downside Reviewer','Short-Term Rental Analyst','Rent-Roll Analyst']:
+        assert needed in agents
+    assert any('DataSF DBI' in e['text'] for e in ev if e['kind']=='fetch')
+    assert any('ZORI' in e['text'] for e in ev)
+    assert any(e['kind']=='handoff' and 'Downside Reviewer' in e['text'] for e in ev)
+    assert ev[-1]['agent']=='Router / Orchestrator'
+    for pid in ['richmond-3','excelsior-2','mission-3','sunset-2']:
+        assert any(e['property_id']==pid for e in ev)

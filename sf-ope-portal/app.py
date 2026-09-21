@@ -233,16 +233,26 @@ def financing_fit(p,intake):
     return{'live':False,'source_tag':'assumption (affordability heuristic - not a credit pull)',
      'loan_needed':loan,'net_new_monthly':net_new,'credit_band':band,'summary':summary,'verdict':verdict}
 
-def analyze(intake:Intake,rate_pct:float):
+def analyze(intake:Intake,rate_pct:float,rate_source:str='seeded'):
     floor=intake.min_living_allowance_usd_per_week
     rows=[]
     any_live=False
     geo_area=(intake.geo_area or '').strip() or None
+    events=[]
+    def evt(agent,kind,text,pid=None):
+        events.append({'seq':len(events)+1,'agent':agent,'kind':kind,'property_id':pid,'text':text})
+    evt('Router / Orchestrator','packet','Split the intake into %d typed task packets, one per building.' % len(SEEDED))
+    evt('Financing Analyst','fetch','Pulled the 30-yr rate: %.2f%% [%s].' % (rate_pct,rate_source))
     for seed in SEEDED:
         p={**seed,'risk':list(seed['risk']),'sources':dict(seed['sources']),'verify':list(seed['verify'])}
-        live_block=merge_live(p,livedata.city_record(seed))
+        cr=livedata.city_record(seed)
+        evt('Permit & Zoning Analyst','fetch','Queried DataSF DBI permits + Rent Board inventory for %s.' % seed['address']['display'],seed['id'])
+        live_block=merge_live(p,cr)
         any_live=any_live or bool(live_block and live_block.get('dbi'))
+        if live_block and live_block.get('unit_verdict'):
+            evt('Permit & Zoning Analyst','finding',live_block['unit_verdict'],seed['id'])
         b=brief_for(p,intake,rate_pct)
+        evt('Acquisition Scout','finding','Screened against price ceiling and intake filters%s.' % ((' - area "%s": %s' % (geo_area, 'match' if geo_match(seed,geo_area)[0] else 'no match')) if geo_area else ''),seed['id'])
         if geo_area:
             matched,how=geo_match(seed,geo_area)
             p['geo_match']=matched
@@ -250,10 +260,22 @@ def analyze(intake:Intake,rate_pct:float):
             if not matched:
                 b['verdict']='Outside your area'
                 b['flags']=b['flags']+[{'severity':'amber','flag':'Outside your area','text':'Does not match the area you asked for ("%s"). Kept for comparison, excluded from recommended.' % geo_area}]
-        p['amenities']=amenities_block(seed,livedata.amenities_for(seed))
-        p['str']=str_block(seed,livedata.str_comps(seed['geo'].get('neighborhood')))
-        p['rent_benchmark']=zori_block(seed,livedata.zori_benchmark(seed['geo'].get('zip')))
+        am=livedata.amenities_for(seed)
+        evt('Neighborhood & Amenities Analyst','fetch','Queried OpenStreetMap + Bay Wheels around the address.' if am else 'Live map data unreachable - used the seeded amenities screen.',seed['id'])
+        p['amenities']=amenities_block(seed,am)
+        evt('Rent-Roll Analyst','finding','Claimed $%s/mo vs defensible $%s/mo; %s rent is carried.' % (format(seed['rent_claim'],','),format(p['verified_rent'],','),'only defensible' if p['verified_rent']!=seed['rent_claim'] else 'full claimed'),seed['id'])
+        sc=livedata.str_comps(seed['geo'].get('neighborhood'))
+        evt('Short-Term Rental Analyst','fetch','Pulled Inside Airbnb SF comps for %s.' % seed['geo']['neighborhood'] if sc else 'STR comps feed unreachable - used seeded comps.',seed['id'])
+        p['str']=str_block(seed,sc)
+        zb=livedata.zori_benchmark(seed['geo'].get('zip'))
+        evt('Rent-Roll Analyst','fetch','Pulled the Zillow ZORI benchmark for %s.' % seed['geo']['zip'] if zb else 'ZORI feed unreachable - used the seeded benchmark.',seed['id'])
+        p['rent_benchmark']=zori_block(seed,zb)
         p['financing_fit']=financing_fit(p,intake)
+        evt('Layout & Owner-Unit Analyst','finding','Owner-unit checklist: %s (fit %.0f%%).' % (seed['owner'],seed['owner_fit']*100),seed['id'])
+        evt('Construction & Repair Estimator','finding','Repair range attached; Renovation Feasibility scoped as %s.' % seed['reno_scope'],seed['id'])
+        evt('OpEx & Tax Analyst','finding','Reserves and tax carried inside the $%s/mo housing cost.' % format(seed['housing_cost'],','),seed['id'])
+        evt('Financing Analyst','finding',p['financing_fit']['verdict'],seed['id'])
+        evt('Financing Analyst','handoff','Packet handed to the Downside Reviewer.',seed['id'])
         coc=(p['verified_rent']-p['housing_cost'])*12/max(intake.cash_available_usd,1)
         rows.append({**p,**b,'live':live_block,'_coc':coc,
             'score_components':{
@@ -271,10 +293,13 @@ def analyze(intake:Intake,rate_pct:float):
         r['penalties']=penalties
         r['score']=round(base-penalties,2)
         del r['_coc']
+    evt('Downside Reviewer','finding','Ran 3 downside stress tests per building at %.2f%% and stripped unsupported evidence.' % rate_pct)
     rows.sort(key=lambda x:(x.get('geo_match') is False,-x['score']))
     for i,r in enumerate(rows): r['rank']=i+1
+    evt('Downside Reviewer','handoff','Ranking recomputed and handed back to the Router / Orchestrator.')
+    evt('Router / Orchestrator','finding','Ranked pitches assembled for the OPE - the human decides.')
     matched=sum(1 for r in rows if r.get('geo_match') is not False) if geo_area else None
-    return rows,any_live,matched
+    return rows,any_live,matched,events
 
 class Decision(BaseModel):
     run_id:str
@@ -317,7 +342,7 @@ def config():
 def run(intake:Intake):
     rate,rate_source,rate_live=resolve_rate(intake)
     ceiling=intake.max_purchase_price_usd or round(intake.cash_available_usd/0.22)
-    properties,any_live,matched=analyze(intake,rate)
+    properties,any_live,matched,events=analyze(intake,rate,rate_source)
     geo_area=(intake.geo_area or '').strip() or None
     amenities_live=any(p['amenities']['live'] for p in properties)
     str_live=any(p['str']['live'] for p in properties)
@@ -334,7 +359,7 @@ def run(intake:Intake):
     return {'run_id':str(uuid.uuid4())[:8],'team_log':team_log,'geo_area':geo_area,'geo_matched':matched,'seeded_demo':True,'data_mode':'live city records' if any_live else 'seeded (offline)','intake':intake.model_dump(),
         'financing':{'rate_pct':rate,'source':rate_source,'live':rate_live,'series_url':livedata.FRED_SERIES_URL},
         'price_ceiling':{'max_purchase_price_usd':ceiling,'source':'assumption' if not intake.max_purchase_price_usd else 'listing','note':'Derived from cash + conventional 20% down preset' if not intake.max_purchase_price_usd else 'Set in intake'},
-        'properties':properties,
+        'properties':properties,'events':events,
         'agents':agent_roster(any_live,rate,rate_source,geo_area,amenities_live,str_live)}
 
 @app.post('/api/decide')
@@ -345,7 +370,7 @@ def decide(d:Decision):
 
 @app.post('/api/sendback')
 def sendback(s:SendBack):
-    rows,_,_=analyze(Intake(),SEEDED_RATE_PCT)
+    rows,_,_,_=analyze(Intake(),SEEDED_RATE_PCT)
     prop=next((p for p in rows if p['id']==s.property_id),None)
     if not prop: return {'error':'unknown property_id'}
     SENDBACKS.setdefault((s.run_id,s.property_id),[]).append(s.note)
