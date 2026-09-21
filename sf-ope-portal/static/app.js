@@ -80,6 +80,7 @@ async function sendback(pid){
 function render(d){
  RUN=d.run_id;
  document.getElementById('dm').textContent=d.data_mode;
+ if(d.events){window.LAST_EVENTS=d.events;replay(d.events);}
  teamlog.innerHTML=d.team_log.map(x=>`<li>${x}</li>`).join('');
  agents.innerHTML=d.agents.map(a=>`<details class="agent"><summary>${a.name}</summary><div class="ad"><p><b>This run:</b> ${a.did}</p><p><b>Asks:</b> ${a.question}</p><p><b>Key evidence:</b> ${a.evidence}</p></div></details>`).join('');
  summary.textContent=`${d.geo_area?`area "${d.geo_area}": ${d.geo_matched} of ${d.properties.length} match · `:''}${d.properties.length} buildings analyzed · price ceiling ${money(d.price_ceiling.max_purchase_price_usd)} [${d.price_ceiling.source}] · financing ${d.financing.rate_pct}% [${d.financing.source}]`;
@@ -96,3 +97,28 @@ f.onsubmit=async e=>{e.preventDefault();
  if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
  render(await r.json())};
+
+let REPLAY=null;
+function replay(events){
+ if(!events||!events.length)return;
+ const feed=document.getElementById('feed');if(!feed)return;
+ if(REPLAY)clearInterval(REPLAY);
+ feed.innerHTML='';
+ const tiles=[...document.querySelectorAll('details.agent')];
+ let i=0;
+ const step=()=>{
+  tiles.forEach(t=>t.classList.remove('on'));
+  if(i>=events.length){REPLAY=null;return;}
+  const e=events[i++];
+  const tile=tiles.find(t=>t.querySelector('summary')&&t.querySelector('summary').textContent.trim().startsWith(e.agent));
+  if(tile)tile.classList.add('on');
+  const li=document.createElement('li');
+  li.className='e-'+e.kind;
+  li.innerHTML='<b>'+e.agent+'</b>'+(e.property_id?' <span class="pid">'+e.property_id+'</span>':'')+': '+e.text;
+  feed.appendChild(li);
+  feed.scrollTop=feed.scrollHeight;
+ };
+ step();
+ REPLAY=setInterval(step,480);
+}
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='replay'&&window.LAST_EVENTS)replay(LAST_EVENTS);});
