@@ -35,7 +35,7 @@ const card=p=>`<article class="property ${p.verdict.startsWith('Below')||p.verdi
 <div class="rank">#${p.rank}</div>
 <div>
 <h3>${p.name}</h3>
-<div class="sub">${money(p.price)} · ${p.units} units · ${p.address?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address.display+', San Francisco, CA')}" target="_blank" rel="noopener">${p.address.display}</a> · `:''}${p.owner}</div>
+<div class="sub">${money(p.price)} · ${p.units} units · ${p.address?`<a href="https://www.bing.com/maps?q=${encodeURIComponent(p.address.display+', San Francisco, CA')}" target="_blank" rel="noopener">${p.address.display}</a> · `:''}${p.owner}</div>
 <div class="risks">${p.flags.map(x=>`<span class="${sev(x)}" title="${x.text}">${x.flag}</span>`).join('')}</div>
 <table class="nums">
 <tr><td>Housing cost</td><td>${money(p.housing_cost)}/mo <span class="tag assume">${p.sources.housing_cost}</span></td></tr>
