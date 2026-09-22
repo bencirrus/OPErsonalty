@@ -85,6 +85,7 @@ function render(d){
  agents.innerHTML=d.agents.map(a=>`<details class="agent"><summary>${a.name}</summary><div class="ad"><p><b>This run:</b> ${a.did}</p><p><b>Asks:</b> ${a.question}</p><p><b>Key evidence:</b> ${a.evidence}</p></div></details>`).join('');
  summary.textContent=`${d.geo_area?`area "${d.geo_area}": ${d.geo_matched} of ${d.properties.length} match · `:''}${d.properties.length} buildings analyzed · price ceiling ${money(d.price_ceiling.max_purchase_price_usd)} [${d.price_ceiling.source}] · financing ${d.financing.rate_pct}% [${d.financing.source}]`;
  cards.innerHTML=d.properties.map(card).join('');
+ initPropertyReveal();
  work.classList.remove('hide');work.scrollIntoView({behavior:'smooth'});
 }
 fetch('/api/config').then(r=>r.json()).then(cfg=>{
@@ -92,7 +93,8 @@ fetch('/api/config').then(r=>r.json()).then(cfg=>{
  document.getElementById('rate-note').textContent=cfg.note;
 }).catch(()=>{});
 f.onsubmit=async e=>{e.preventDefault();
- let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
+ let ownerSpace=[...document.querySelectorAll('input[name="owner-space"]:checked')].map(x=>x.value).join(' + ');
+ let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:ownerSpace,move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
  if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -122,3 +124,18 @@ function replay(events){
  REPLAY=setInterval(step,480);
 }
 document.addEventListener('click',e=>{if(e.target&&e.target.id==='replay'&&window.LAST_EVENTS)replay(LAST_EVENTS);});
+
+
+function initOwnerSpaceSummary(){
+ const root=document.querySelector('.checkdrop');if(!root)return;
+ const update=()=>{const picked=[...root.querySelectorAll('input:checked')].map(x=>x.value);root.querySelector('.check-summary').textContent=picked.join(', ')||'Select essentials'};
+ root.addEventListener('change',update);update();
+}
+function initPropertyReveal(){
+ const tiles=[...document.querySelectorAll('#cards .property')];
+ if(!('IntersectionObserver' in window)){tiles.forEach(t=>t.classList.add('revealed'));return;}
+ tiles.forEach(t=>t.classList.add('reveal-ready'));
+ const io=new IntersectionObserver((entries)=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('revealed');io.unobserve(entry.target)}}),{threshold:.16,rootMargin:'0px 0px -8% 0px'});
+ tiles.forEach((t,i)=>{t.style.transitionDelay=Math.min(i*70,210)+'ms';io.observe(t)});
+}
+initOwnerSpaceSummary();

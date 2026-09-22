@@ -38,7 +38,8 @@ async function sendback(pid){
 """async function decide(pid,dec){document.getElementById('st-'+pid).textContent='static snapshot - decisions need the live app (see sf-ope-portal/README.md)';}
 async function sendback(pid){document.getElementById('st-'+pid).textContent='static snapshot - send-back needs the live app (see sf-ope-portal/README.md)';}""")
 js = js.replace("""f.onsubmit=async e=>{e.preventDefault();
- let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:'Studio + fridge + laundry',move_timeline_days:90};
+ let ownerSpace=[...document.querySelectorAll('input[name="owner-space"]:checked')].map(x=>x.value).join(' + ');
+ let payload={cash_available_usd:+cash.value,min_living_allowance_usd_per_week:+floor.value,other_monthly_income_usd:+income.value,current_rent_usd:+rent.value,credit_score:credit.value?+credit.value:null,owner_space:ownerSpace,move_timeline_days:90};
  if(rate.value!==rate.dataset.prefilled)payload.rate_pct=+rate.value;
  if(geo.value.trim())payload.geo_area=geo.value.trim();
  let r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -53,15 +54,15 @@ html = """<!doctype html><html><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>OPErsonalty</title><link rel="stylesheet" href="site-assets/app.css">
 </head>
-  <body><main><header><div class="brand">OPE<b>rsonalty</b></div>
+  <body><main><header><div class="brand" aria-label="OPErsonalty"><span class="brand-long" aria-hidden="true">One-Person Entrepreneur Personal Property</span><span class="brand-short" aria-hidden="true">OPE<b>rsonalty</b></span></div>
     <div class="pill">Static snapshot - seeded demo</div>
   </header><section class="hero"><div><p class="eyebrow">A HOME THAT RUNS LIKE A SMALL BUSINESS</p><h1>Find the building that gives you room to breathe for your next venture.</h1><p class="lede">Answer a few questions. A silicon team checks rents, layouts, permits, repairs, financing, and downside, then pitches the evidence.</p></div>
     <form id="intake"><label>Cash available <input id="cash" type="number" value="320000"></label><label>Financing rate <div class="suffix"><input id="rate" type="number" step=".01" value="RATEVALUE"><span>%</span></div>
       <small id="rate-note" class="field-note">Baked from the live FRED weekly survey at snapshot time; this static form does not recompute.</small></label>
       <label>Minimum weekly living cash <div class="suffix"><input id="floor" type="number" value="100"><span>/ week</span></div></label>
-      <label>Owner space <input value="Studio + fridge + laundry" disabled></label>
+      <fieldset class="owner-space"><legend>Owner Dwelling &amp; en suite</legend><details class="checkdrop"><summary><span class="check-summary">Studio, Bathroom, Laundry, Heating</span></summary><div class="check-options"><label><input type="checkbox" name="owner-space" value="Studio" checked> Studio</label><label><input type="checkbox" name="owner-space" value="1Br"> 1Br</label><label><input type="checkbox" name="owner-space" value="Bathroom" checked> Bathroom</label><label><input type="checkbox" name="owner-space" value="Laundry" checked> Laundry</label><label><input type="checkbox" name="owner-space" value="Heating" checked> Heating</label></div></details></fieldset>
       <label>Current monthly rent <div class="suffix"><input id="rent" type="number" value="2400"><span>/ mo</span></div></label>
-      <label>Monthly income <div class="suffix"><input id="income" type="number" value="14000"><span>/ mo</span></div></label>
+      <label>Current monthly income <div class="suffix"><input id="income" type="number" value="4000"><span>/ mo</span></div></label>
       <label>Credit score <input id="credit" type="number" placeholder="baked demo"></label>
       <label>Area to live <input id="geo" type="text" placeholder="baked demo - filter not recomputed"></label>
       <button>Run property team</button></form></section><section id="work" class="hide"><div class="runbar"><details class="team" id="team"><summary><span class="eyebrow">SILICON TEAM</span> <b>Evidence check complete</b> <span id="dm" class="tag src"></span></summary>

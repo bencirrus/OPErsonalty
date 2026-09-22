@@ -40,3 +40,26 @@ details.str ul{margin:4px 0 4px 16px;padding:0}
 .feed .pid{color:var(--muted);font-size:10px}
 details.agent.on{outline:2px solid var(--pine);background:#e2efdd}
 button.mini{border:1px solid var(--pine);background:#fff;color:var(--pine);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;grid-column:auto}
+
+
+/* Landing-page polish */
+.brand{position:relative;min-width:min(390px,60vw);height:32px;overflow:hidden;white-space:nowrap}
+.brand-long,.brand-short{position:absolute;left:0;top:0;transform-origin:left center}
+.brand-long{font-size:16px;line-height:30px;animation:brandLong 3.2s cubic-bezier(.4,0,.2,1) both}
+.brand-short{font-size:21px;line-height:30px;opacity:0;animation:brandShort 3.2s cubic-bezier(.4,0,.2,1) both}
+@keyframes brandLong{0%,30%{opacity:1;letter-spacing:0;transform:scaleX(1)}70%{opacity:.42;letter-spacing:-.075em;transform:scaleX(.34)}82%,100%{opacity:0;transform:scaleX(.25)}}
+@keyframes brandShort{0%,58%{opacity:0;transform:translateY(7px) scale(.9)}78%,100%{opacity:1;transform:none}}
+.owner-space{border:0;padding:0;margin:0;min-width:0}
+.owner-space legend{font-size:12px;font-weight:800;color:var(--muted);padding:0}
+.checkdrop{position:relative;margin-top:6px}
+.checkdrop summary{list-style:none;padding:12px 34px 12px 12px;border:1px solid #cfd6cb;border-radius:10px;background:#fff;color:var(--ink);font-weight:400;cursor:pointer;min-height:46px}
+.checkdrop summary::-webkit-details-marker{display:none}
+.checkdrop summary:after{content:'⌄';position:absolute;right:13px;font-size:18px;color:var(--pine)}
+.checkdrop[open] summary:after{content:'⌃'}
+.check-options{position:absolute;z-index:8;left:0;right:0;top:calc(100% + 5px);padding:8px;background:#fff;border:1px solid #cfd6cb;border-radius:10px;box-shadow:0 12px 28px #263a2520}
+.check-options label{display:flex;align-items:center;gap:8px;padding:7px 8px;color:var(--ink);font-size:13px;cursor:pointer}
+.check-options input{width:auto;margin:0;accent-color:var(--pine)}
+.property.reveal-ready{opacity:0;transform:translateY(34px) scale(.985);transition:opacity .65s ease,transform .65s cubic-bezier(.2,.75,.25,1)}
+.property.reveal-ready.revealed{opacity:1;transform:none}
+@media(max-width:800px){.brand{min-width:220px}.brand-long{font-size:11px}.pill{display:none}.check-options{position:static}}
+@media(prefers-reduced-motion:reduce){.brand-long{display:none}.brand-short{opacity:1;animation:none}.property.reveal-ready{opacity:1;transform:none;transition:none}}
